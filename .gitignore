@@ -1,0 +1,19 @@
+# tooling / session artifacts
+.claude/
+jpexs-decompiler/
+
+# build output and caches
+build/
+tools/.sdk/
+
+# user-local mod configuration
+mods/enabled.json
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/
+*.swp
