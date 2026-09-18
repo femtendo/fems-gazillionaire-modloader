@@ -3,6 +3,20 @@
 Tracks classes or systems that don't survive the decompile/recompile
 round-trip cleanly, and any workarounds in place for them.
 
+## HUMAN REQUIRED: Windows installer path is untested
+
+`tools/installer/install.sh` hardcodes a macOS `DEFAULT_TARGET` (Steam's
+`Gazillionaire.app/Contents/Resources/Gazillionaire.swf` layout) but
+accepts `--target <path>` to point at any SWF, so it should work on
+Windows by passing the Windows Steam install path. This has **never been
+run against a real Windows install** — no Windows machine/Steam install is
+available in this environment to verify it. Someone with a Windows machine
+needs to: run `install.sh install --target "<path>\Gazillionaire.swf"`
+against a real Windows Gazillionaire install, confirm hash verification /
+backup / patch all work, then `install.sh restore --target ...` to confirm
+restore. Until that happens, treat Windows support as unverified, not
+broken.
+
 ## Resolved: Zero-mod baseline compiles
 
 The full 156-file decompiled tree recompiles cleanly with `node
