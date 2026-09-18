@@ -54,7 +54,7 @@ scan_secrets() {
         fail=1
         return
     fi
-    if ! gitleaks detect --source . --log-opts="$range" --no-banner -q; then
+    if ! gitleaks detect --source . --log-opts="$range" --no-banner --log-level error; then
         echo "pre-push: gitleaks flagged a potential secret in $range" >&2
         fail=1
     fi
