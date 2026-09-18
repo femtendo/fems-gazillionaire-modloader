@@ -3,6 +3,7 @@
 _local/
 workers/
 jpexs-decompiler/
+.playwright-mcp/
 
 # build output and caches
 build/

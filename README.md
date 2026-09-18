@@ -35,3 +35,8 @@ See `docs/modding-guide.md` for how to write your own mods, and
 
 Run `tools/installer/install.sh restore` to revert to your original,
 unmodified game file.
+
+## Contributing
+
+Run `git config core.hooksPath .githooks` once after cloning to enable this
+repo's pre-push checks (commit hygiene + secret scanning via `gitleaks`).
