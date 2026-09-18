@@ -1,0 +1,12 @@
+{
+  "id": "fourth-example",
+  "name": "Fourth Example (Asset Override)",
+  "version": "1.0.0",
+  "engineCompat": ">=0.1.0",
+  "touches": {
+    "classes": [],
+    "data": [],
+    "assets": ["109.png"]
+  },
+  "priority": 0
+}

@@ -1,0 +1,12 @@
+{
+  "id": "third-example",
+  "name": "Third Example (New Class)",
+  "version": "1.0.0",
+  "engineCompat": ">=0.1.0",
+  "touches": {
+    "classes": ["ModWelcomeBanner"],
+    "data": [],
+    "assets": []
+  },
+  "priority": 0
+}

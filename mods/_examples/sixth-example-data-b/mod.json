@@ -1,0 +1,12 @@
+{
+  "id": "sixth-example",
+  "name": "Sixth Example (Data Override B)",
+  "version": "1.0.0",
+  "engineCompat": ">=0.1.0",
+  "touches": {
+    "classes": [],
+    "data": ["balance.json"],
+    "assets": []
+  },
+  "priority": 0
+}

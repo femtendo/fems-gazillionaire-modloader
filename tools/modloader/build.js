@@ -12,7 +12,11 @@ const {
     loadModManifest,
     computeTouchSets,
     detectConflicts,
-    computeCacheKey
+    computeCacheKey,
+    validateTouches,
+    checkEngineCompat,
+    readJsonObjectSafe,
+    collectFilesSorted
 } = require('./mods');
 
 const ROOT = path.resolve(__dirname, '../..');
@@ -49,6 +53,19 @@ let sourceTreeDir = SRC_DIR;
 if (enabledModIds.length > 0) {
     const modManifests = enabledModIds.map((id) => loadModManifest(ROOT, id));
     const manifestsById = new Map(modManifests.map((m) => [m.id, m]));
+
+    const validationErrors = [];
+    for (const m of modManifests) {
+        validationErrors.push(...validateTouches(m));
+        const compatError = checkEngineCompat(m, manifest.engineVersion);
+        if (compatError) validationErrors.push(compatError);
+    }
+    if (validationErrors.length > 0) {
+        console.error('\nMod validation failed — build aborted:');
+        for (const e of validationErrors) console.error('  ' + e);
+        process.exit(1);
+    }
+
     const touchSets = computeTouchSets(modManifests);
     const { hardFailures, suppressions } = detectConflicts(touchSets, manifestsById);
 
@@ -84,6 +101,43 @@ if (enabledModIds.length > 0) {
             if (fs.existsSync(modSrc)) {
                 fs.cpSync(modSrc, mergedDir, { recursive: true, force: true });
             }
+        }
+
+        // Assets: full-file overlay onto merged src/assets/ (same rule as
+        // src/ — engine Embed tags resolve assets relative to the source
+        // file's directory, so mod assets/ land at mergedDir/assets/).
+        for (const m of inPriorityOrder) {
+            const modAssets = path.join(m._dir, 'assets');
+            if (fs.existsSync(modAssets)) {
+                fs.cpSync(modAssets, path.join(mergedDir, 'assets'), { recursive: true, force: true });
+            }
+        }
+
+        // Data: JSON files merge at the key level (later/higher-priority mod
+        // wins per key) instead of full-file replace — conflict detection
+        // already guarantees no two enabled mods set the same key. Non-JSON
+        // (or non-object) data files fall back to a full-file overlay.
+        const dataByRelPath = new Map();
+        for (const m of inPriorityOrder) {
+            const modData = path.join(m._dir, 'data');
+            if (!fs.existsSync(modData)) continue;
+            for (const abs of collectFilesSorted(modData)) {
+                const relPath = path.relative(modData, abs);
+                const parsed = readJsonObjectSafe(abs);
+                const existing = dataByRelPath.get(relPath);
+                if (parsed && existing?.json) {
+                    Object.assign(existing.json, parsed);
+                } else if (parsed) {
+                    dataByRelPath.set(relPath, { json: parsed });
+                } else {
+                    dataByRelPath.set(relPath, { raw: fs.readFileSync(abs) });
+                }
+            }
+        }
+        for (const [relPath, entry] of dataByRelPath) {
+            const outFile = path.join(mergedDir, 'data', relPath);
+            fs.mkdirSync(path.dirname(outFile), { recursive: true });
+            fs.writeFileSync(outFile, entry.json ? JSON.stringify(entry.json, null, 2) + '\n' : entry.raw);
         }
     }
     sourceTreeDir = mergedDir;
