@@ -1,0 +1,12 @@
+{
+  "id": "hello-world-example",
+  "name": "Hello World Example",
+  "version": "1.0.0",
+  "engineCompat": ">=0.1.0",
+  "touches": {
+    "classes": ["GameStrings"],
+    "data": [],
+    "assets": []
+  },
+  "priority": 0
+}
