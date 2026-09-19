@@ -40,6 +40,7 @@ package
    import spark.skins.spark.ErrorSkin;
    import spark.skins.spark.FocusSkin;
    
+   [Mixin]
    public class _Gazillionaire_Styles
    {
       

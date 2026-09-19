@@ -23,6 +23,7 @@ package
    import mx.styles.StyleManagerImpl;
    import mx.utils.ObjectProxy;
    
+   [Mixin]
    public class _Gazillionaire_FlexInit
    {
       
@@ -115,6 +116,4 @@ package
       }
    }
 }
-
-TextFieldFactory;
 

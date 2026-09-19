@@ -143,19 +143,43 @@ if (enabledModIds.length > 0) {
     sourceTreeDir = mergedDir;
 }
 
-// Determine swf-version from the codebase
-// The app uses Flex SDK 4.6.0 with mx.* imports, so swf-version 43 is appropriate
-// (Flex SDK 4.6 targets swf-version 43 by default)
+// Matches the real shipped SWF's header exactly (verified via swfdump):
+// swf-version 43, built with Apache Flex 4.16.1 (not old Adobe Flex 4.6 —
+// see tools/fetch-sdk.sh). tools/.sdk/flex/ has the HARMAN AIR SDK overlaid
+// on top per Apache's documented procedure, so air-config.xml resolves.
 const SWF_VERSION = 43;
 const TARGET_PLAYER = '11.1';
 
-// Build mxmlc command
-// air-config.xml switches the compiler+framework libs to the AIR profile
-// (this Flex 4.6.0 SDK bundles its own AIR SDK, no separate overlay needed)
+// mxmlc's own default stage size (500x375) does NOT match the shipped
+// game's real stage size (760x570, confirmed via swfdump on the original
+// SWF's header, and matches the width/height set in Gazillionaire.as's own
+// constructor) — has to be passed explicitly or windows come out too small.
+const DEFAULT_WIDTH = 760;
+const DEFAULT_HEIGHT = 570;
+
+// mxmlc auto-generates its own SystemManager subclass for any
+// WindowedApplication root (Gazillionaire extends WindowedApplication) —
+// it does NOT use engine/src's decompiled _Gazillionaire_mx_managers_
+// SystemManager.as at all (that file is itself just a decompiled copy of
+// what the ORIGINAL build's compiler generated; ours generates a fresh,
+// differently-named one every time and silently ignores the old one).
+// The freshly generated SystemManager defaults to a generic preloader
+// and an empty mixins list, which drops the game's actual startup wiring
+// (CustomPreloader, and _Gazillionaire_FlexInit's/_Gazillionaire_Styles's
+// init() calls) — nothing throws, initialization just silently never
+// reaches the point where WindowedApplication shows its native window.
+// -preloader restores the real preloader; [Mixin] metadata (on
+// _Gazillionaire_FlexInit and _Gazillionaire_Styles in engine/src) is
+// Flex's own source-path-wide scan for self-registering init classes and
+// restores the rest without needing to fight the codegen further.
+const PRELOADER_CLASS = 'CustomPreloader';
+
 const mxmlcArgs = [
     `-load-config+=${path.resolve(SDK_DIR, 'frameworks', 'air-config.xml')}`,
     `-swf-version=${SWF_VERSION}`,
     `-target-player=${TARGET_PLAYER}`,
+    '-default-size', String(DEFAULT_WIDTH), String(DEFAULT_HEIGHT),
+    `-preloader=${PRELOADER_CLASS}`,
     `-compiler.source-path=${sourceTreeDir}`,
     `-output=${OUTPUT_SWF}`,
     `-compiler.external-library-path=${path.resolve(SDK_DIR, 'frameworks')}`,

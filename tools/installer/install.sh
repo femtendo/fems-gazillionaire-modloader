@@ -27,6 +27,33 @@ sha256_of() {
     shasum -a 256 "$1" | awk '{print $1}'
 }
 
+# Patching a file inside a signed .app bundle invalidates the bundle's
+# code signature (macOS seals every file's hash at sign time). On an
+# unsigned/ad-hoc-signed seal like this game ships with, that doesn't
+# block the process from launching, but the AIR captive runtime silently
+# refuses to render its content window once the seal doesn't match — the
+# app appears to run (visible in Activity Monitor / the Dock) with no
+# window ever appearing. Re-sign ad hoc after patching so the seal covers
+# the new bytes. Only relevant on macOS (Windows targets are unaffected —
+# no code-signing seal to break).
+resign_app_bundle_if_macos() {
+    local target="$1"
+    [ "$(uname)" = "Darwin" ] || return 0
+    command -v codesign >/dev/null 2>&1 || return 0
+
+    local dir
+    dir="$(dirname "$target")"
+    while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
+        case "$dir" in
+            *.app)
+                codesign --force --deep --sign - "$dir" 2>/dev/null || true
+                return 0
+                ;;
+        esac
+        dir="$(dirname "$dir")"
+    done
+}
+
 read_manifest_hash() {
     node -e "console.log(require('$MANIFEST').officialSwfSha256)"
 }
@@ -72,6 +99,7 @@ case "$COMMAND" in
 
         cp "$TARGET" "$BACKUP"
         cp "$BUILT_SWF" "$TARGET"
+        resign_app_bundle_if_macos "$TARGET"
         echo "Installed. Original backed up to $BACKUP"
         ;;
 
@@ -89,6 +117,7 @@ case "$COMMAND" in
 
         cp "$BACKUP" "$TARGET"
         rm "$BACKUP"
+        resign_app_bundle_if_macos "$TARGET"
         echo "Restored original SWF to $TARGET and removed the backup."
         ;;
 

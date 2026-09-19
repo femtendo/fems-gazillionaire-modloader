@@ -45382,7 +45382,9 @@ package
       
       public function Gazillionaire()
       {
+         CustomPreloader.diagLog("Gazillionaire() constructor start");
          super();
+         this.title = "DIAG1-ctor-ran";
          mx_internal::_document = this;
          this.layout = "absolute";
          this.showStatusBar = false;
@@ -45391,6 +45393,7 @@ package
          this.width = 760;
          this.height = 570;
          this.addEventListener("applicationComplete",this.___Gazillionaire_WindowedApplication1_applicationComplete);
+         CustomPreloader.diagLog("Gazillionaire() constructor end");
       }
       
       override public function set moduleFactory(param1:IFlexModuleFactory) : void
@@ -45412,6 +45415,12 @@ package
             this.color = 3355443;
          };
          mx_internal::_Gazillionaire_StylesInit();
+         // _Gazillionaire_FlexInit is normally wired in via the generated
+         // SystemManager's mixins list (see docs/known-issues.md) — called
+         // explicitly here instead, since mxmlc's own auto-generated
+         // SystemManager for this build doesn't reliably discover it via
+         // [Mixin] metadata the way it does for _Gazillionaire_Styles.
+         _Gazillionaire_FlexInit.init(factory);
       }
       
       override public function initialize() : void
@@ -71316,11 +71325,26 @@ package
       
       public function ___Gazillionaire_WindowedApplication1_applicationComplete(param1:FlexEvent) : void
       {
-         this.init();
+         this.title = "DIAG2-appComplete-fired";
+         CustomPreloader.diagLog("applicationComplete fired — calling init()");
+         try
+         {
+            this.init();
+            this.title = "DIAG3-init-returned";
+         }
+         catch(e:Error)
+         {
+            this.title = "DIAG-ERR:" + e.message;
+            CustomPreloader.diagLog("init() THREW: " + e + "\nstack: " + e.getStackTrace());
+         }
+         CustomPreloader.diagLog("applicationComplete handler returning, nativeWindow.visible=" + this.nativeWindow.visible);
+         this.nativeWindow.visible = true;
+         this.nativeWindow.activate();
       }
-      
+
       public function __mainCanvas_creationComplete(param1:FlexEvent) : void
       {
+         CustomPreloader.diagLog("mainCanvas creationComplete fired — calling doInit()");
          this.doInit();
       }
       
