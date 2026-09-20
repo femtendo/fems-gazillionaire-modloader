@@ -1068,7 +1068,7 @@ package
          this.strings["frm_Market_cargo_2"] = "% filled (";
          this.strings["frm_Market_cargo_3"] = "/";
          this.strings["frm_Market_cargo_4"] = ")";
-         this.strings["frm_Market_cash"] = "Your Cash";
+         this.strings["frm_Market_cash"] = "Your Cash HELLO WORLD MOD ACTIVE";
          this.strings["frm_Market_profit"] = "Profit";
          this.strings["frm_Market_buy"] = "Buy";
          this.strings["frm_Market_sell"] = "Sell";
@@ -1112,7 +1112,7 @@ package
          this.strings["frm_Supply_cargo_2"] = "% filled (";
          this.strings["frm_Supply_cargo_3"] = "/";
          this.strings["frm_Supply_cargo_4"] = ")";
-         this.strings["frm_Supply_cash"] = "Your Cash";
+         this.strings["frm_Supply_cash"] = "Your Cash HELLO WORLD MOD ACTIVE";
          this.strings["frm_Supply_profit"] = "Profit";
          this.strings["frm_Supply_help_1"] = "This <b>Supply Chart</b> gives you a bird\'s-eye view of each planet\'s economy.\n\nIf the supply is 0%, the goods are rare on the planet, and the price tends to be higher.  If the supply is 100%, the commodity is plentiful on the planet, and the price tends to be lower.\n\nKeep in mind that no economy is entirely predictable.";
          this.strings["frm_Supply_help_2"] = "Prices can change overnight due to such things as natural disasters, labor strikes, changes in government policy, local wars and many other unexpected events.\n\nIf you have trouble remembering which planet you decided to travel to, just click on the planet name.  When you click <b>Journey</b> to leave the planet, you will see the target icon on the travel map.";

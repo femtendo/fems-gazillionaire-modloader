@@ -8,8 +8,9 @@
 # install: hash-verifies the target SWF against engine/engine.manifest.json,
 #   backs it up (refusing to clobber an existing backup), then copies
 #   build/output/gazillionaire-modded.swf into place.
-# restore: copies the backup back over the target and re-verifies its hash
-#   against the manifest.
+# restore: copies the backup back over the target, reverts the Info.plist
+#   and application.xml patches applied by install, and re-verifies the
+#   restored SWF's hash against the manifest.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -47,6 +48,125 @@ resign_app_bundle_if_macos() {
         case "$dir" in
             *.app)
                 codesign --force --deep --sign - "$dir" 2>/dev/null || true
+                return 0
+                ;;
+        esac
+        dir="$(dirname "$dir")"
+    done
+}
+
+# AIR creates the native content window (correct geometry, visible in
+# CGWindowList) but macOS's own Automatic Termination feature doesn't
+# recognize it as a real, open window — confirmed via the unified log
+# (`_kLSApplicationWouldBeTerminatedByTALKey=1`, "No windows open yet")
+# — and kills the app a few seconds after launch as a result, well before
+# any AVM2/AS3-level explanation was ever the cause. Setting
+# NSSupportsAutomaticTermination/NSSupportsSuddenTermination to false in
+# Info.plist opts the whole app out of that OS-level idle-kill mechanism.
+# Needs a resign after, same as the SWF patch. Only relevant on macOS.
+patch_info_plist_if_macos() {
+    local target="$1"
+    [ "$(uname)" = "Darwin" ] || return 0
+    command -v /usr/libexec/PlistBuddy >/dev/null 2>&1 || return 0
+
+    local dir
+    dir="$(dirname "$target")"
+    while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
+        case "$dir" in
+            *.app)
+                local plist="$dir/Contents/Info.plist"
+                [ -f "$plist" ] || return 0
+                for key in NSSupportsAutomaticTermination NSSupportsSuddenTermination; do
+                    if ! /usr/libexec/PlistBuddy -c "Print :$key" "$plist" >/dev/null 2>&1; then
+                        /usr/libexec/PlistBuddy -c "Add :$key bool false" "$plist" 2>/dev/null || true
+                    fi
+                done
+                return 0
+                ;;
+        esac
+        dir="$(dirname "$dir")"
+    done
+}
+
+# Reverses patch_info_plist_if_macos: removes the two keys it adds. Neither
+# key exists in the original shipped Info.plist (verified against the
+# pristine backup), so unconditionally deleting them on restore is safe —
+# there's no pre-existing value to preserve.
+unpatch_info_plist_if_macos() {
+    local target="$1"
+    [ "$(uname)" = "Darwin" ] || return 0
+    command -v /usr/libexec/PlistBuddy >/dev/null 2>&1 || return 0
+
+    local dir
+    dir="$(dirname "$target")"
+    while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
+        case "$dir" in
+            *.app)
+                local plist="$dir/Contents/Info.plist"
+                [ -f "$plist" ] || return 0
+                for key in NSSupportsAutomaticTermination NSSupportsSuddenTermination; do
+                    /usr/libexec/PlistBuddy -c "Delete :$key" "$plist" 2>/dev/null || true
+                done
+                return 0
+                ;;
+        esac
+        dir="$(dirname "$dir")"
+    done
+}
+
+# application.xml's <initialWindow><visible> is false by design — AIR's
+# contract is that AS3 code flips it true once the app is ready. That
+# handshake doesn't complete reliably in this environment: a class-level
+# static-initializer diagLog probe (the earliest possible hook — fires
+# before any constructor, independent of stage/window state) never fires
+# across repeated relaunches, meaning the ActionScript VM doesn't get to
+# start executing the SWF at all before AIR's own native code gives up.
+# Forcing `nativeWindow.visible = true` from CustomPreloader.as (see that
+# file) is therefore a no-op — that code never runs. The only thing that
+# has been verified to actually work is flipping <visible> to true in the
+# descriptor itself, sidestepping the broken AS3-never-runs handshake
+# entirely: confirmed via CGWindowListCopyWindowInfo(.optionOnScreenOnly)
+# actually containing the window (kCGWindowIsOnscreen: 1), not just
+# .optionAll (which a hidden window also satisfies).
+# IMPORTANT: this only works with a plain ad-hoc signature. Signing with
+# the com.apple.security.get-task-allow entitlement (added for lldb
+# debugging during development) was found to make this NOT work — the
+# app cleanly self-terminates within ~80ms instead
+# (applicationShouldTerminate: -> NSTerminateNow). Never add that
+# entitlement to a real install/distribution build.
+patch_visible_if_macos() {
+    local target="$1"
+    [ "$(uname)" = "Darwin" ] || return 0
+
+    local dir
+    dir="$(dirname "$target")"
+    while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
+        case "$dir" in
+            *.app)
+                local descriptor="$dir/Contents/Resources/META-INF/AIR/application.xml"
+                [ -f "$descriptor" ] || return 0
+                sed -i '' 's|<visible>false</visible>|<visible>true</visible>|' "$descriptor" 2>/dev/null || true
+                return 0
+                ;;
+        esac
+        dir="$(dirname "$dir")"
+    done
+}
+
+# Reverses patch_visible_if_macos: flips <visible> back to false, matching
+# the original shipped descriptor.
+unpatch_visible_if_macos() {
+    local target="$1"
+    [ "$(uname)" = "Darwin" ] || return 0
+
+    local dir
+    dir="$(dirname "$target")"
+    while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
+        case "$dir" in
+            *.app)
+                local descriptor="$dir/Contents/Resources/META-INF/AIR/application.xml"
+                [ -f "$descriptor" ] || return 0
+                sed -i '' 's|<visible>true</visible>|<visible>false</visible>|' "$descriptor" 2>/dev/null || true
                 return 0
                 ;;
         esac
@@ -99,6 +219,8 @@ case "$COMMAND" in
 
         cp "$TARGET" "$BACKUP"
         cp "$BUILT_SWF" "$TARGET"
+        patch_info_plist_if_macos "$TARGET"
+        patch_visible_if_macos "$TARGET"
         resign_app_bundle_if_macos "$TARGET"
         echo "Installed. Original backed up to $BACKUP"
         ;;
@@ -117,8 +239,10 @@ case "$COMMAND" in
 
         cp "$BACKUP" "$TARGET"
         rm "$BACKUP"
+        unpatch_info_plist_if_macos "$TARGET"
+        unpatch_visible_if_macos "$TARGET"
         resign_app_bundle_if_macos "$TARGET"
-        echo "Restored original SWF to $TARGET and removed the backup."
+        echo "Restored original SWF to $TARGET, reverted Info.plist/application.xml patches, and removed the backup."
         ;;
 
     *)

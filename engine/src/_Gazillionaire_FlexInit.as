@@ -38,8 +38,11 @@ package
          var i:int;
          var styleManager:IStyleManager2 = null;
          var fbs:IFlexModuleFactory = param1;
+         CustomPreloader.diagLog("_Gazillionaire_FlexInit.init() START");
          new ChildManager(fbs);
+         CustomPreloader.diagLog("_Gazillionaire_FlexInit.init() ChildManager constructed");
          styleManager = new StyleManagerImpl(fbs);
+         CustomPreloader.diagLog("_Gazillionaire_FlexInit.init() StyleManagerImpl constructed");
          EffectManager.mx_internal::registerEffectTrigger("addedEffect","added");
          EffectManager.mx_internal::registerEffectTrigger("closeEffect","windowClose");
          EffectManager.mx_internal::registerEffectTrigger("completeEffect","complete");
@@ -113,6 +116,7 @@ package
             styleManager.registerInheritingStyle(styleNames[i]);
             i++;
          }
+         CustomPreloader.diagLog("_Gazillionaire_FlexInit.init() END (registered " + styleNames.length + " styles)");
       }
    }
 }

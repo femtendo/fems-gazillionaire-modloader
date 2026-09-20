@@ -6,6 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const {
     loadEnabledMods,
@@ -24,9 +25,36 @@ const ENGINE_DIR = path.resolve(ROOT, 'engine');
 const SRC_DIR = path.resolve(ENGINE_DIR, 'src');
 const BUILD_DIR = path.resolve(ROOT, 'build', 'output');
 const MERGED_SRC_ROOT = path.resolve(ROOT, 'build', 'merged-src');
+const GENERATED_SRC_DIR = path.resolve(ROOT, 'build', 'generated');
 const SDK_DIR = path.resolve(ROOT, 'tools', '.sdk', 'flex');
 const MXMLC = path.resolve(SDK_DIR, 'bin', 'mxmlc');
 const OUTPUT_SWF = path.resolve(BUILD_DIR, 'gazillionaire-modded.swf');
+
+// Writes engine/src's sibling ModLoaderInfo.as, embedding the actually-
+// resolved enabled mod set as compiled-in constants (not read from disk at
+// runtime — this SWF's CustomPreloader shows this on the boot screen like
+// most mod loaders do: how many mods loaded, a build hash, pass/fail).
+// Kept in build/generated/ (gitignored, added as its own -compiler.source-
+// path entry below) rather than written into engine/src, so the tracked
+// source tree never contains a generated file.
+function writeModLoaderInfo(modManifests, cacheKey) {
+    const modCount = modManifests.length;
+    const buildHash = modCount > 0
+        ? cacheKey.slice(0, 10)
+        : crypto.createHash('sha256').update('zero-mods').digest('hex').slice(0, 10);
+    const src = `package
+{
+   public class ModLoaderInfo
+   {
+      public static const MOD_COUNT:int = ${modCount};
+      public static const BUILD_HASH:String = "${buildHash}";
+      public static const VALIDATED:Boolean = true;
+   }
+}
+`;
+    fs.mkdirSync(GENERATED_SRC_DIR, { recursive: true });
+    fs.writeFileSync(path.join(GENERATED_SRC_DIR, 'ModLoaderInfo.as'), src);
+}
 
 // Verify mxmlc exists
 if (!fs.existsSync(MXMLC)) {
@@ -84,7 +112,8 @@ if (enabledModIds.length > 0) {
         );
     }
 
-    const cacheKey = computeCacheKey(modManifests);
+    const cacheKey = computeCacheKey(modManifests, SRC_DIR);
+    writeModLoaderInfo(modManifests, cacheKey);
     const mergedDir = path.join(MERGED_SRC_ROOT, cacheKey);
     if (fs.existsSync(mergedDir) && fs.readdirSync(mergedDir).length > 0) {
         console.log(`Cache hit: reusing merged source at ${mergedDir}`);
@@ -141,6 +170,8 @@ if (enabledModIds.length > 0) {
         }
     }
     sourceTreeDir = mergedDir;
+} else {
+    writeModLoaderInfo([], '');
 }
 
 // Matches the real shipped SWF's header exactly (verified via swfdump):
@@ -163,15 +194,30 @@ const DEFAULT_HEIGHT = 570;
 // SystemManager.as at all (that file is itself just a decompiled copy of
 // what the ORIGINAL build's compiler generated; ours generates a fresh,
 // differently-named one every time and silently ignores the old one).
-// The freshly generated SystemManager defaults to a generic preloader
-// and an empty mixins list, which drops the game's actual startup wiring
-// (CustomPreloader, and _Gazillionaire_FlexInit's/_Gazillionaire_Styles's
-// init() calls) — nothing throws, initialization just silently never
-// reaches the point where WindowedApplication shows its native window.
-// -preloader restores the real preloader; [Mixin] metadata (on
-// _Gazillionaire_FlexInit and _Gazillionaire_Styles in engine/src) is
-// Flex's own source-path-wide scan for self-registering init classes and
-// restores the rest without needing to fight the codegen further.
+// -preloader and -default-size (passed as compiler flags below, not
+// embedded in source) are what make the freshly generated SystemManager's
+// info() populate correctly — without them "usePreloader" still defaults
+// true but info()["preloader"] is undefined, causing an uncaught
+// `new null()` deep in Preloader.initialize() before any window shows.
+// [Mixin] metadata (on _Gazillionaire_Styles in engine/src) is Flex's own
+// source-path-wide scan for self-registering init classes and wires the
+// rest up without needing to fight the codegen further.
+//
+// IMPORTANT: compile directly from Gazillionaire.as, NOT from an .mxml
+// wrapper. An earlier version of this build wrapped Gazillionaire (then
+// named GazillionaireImpl) in a thin Gazillionaire.mxml entry point,
+// working around what looked like an MXML-only requirement for info() to
+// populate. That wrapper's real effect was to make mxmlc emit an extra
+// `Gazillionaire extends GazillionaireImpl` subclass layer (MXML always
+// generates a subclass of its root tag's referenced class) — doubling
+// AVM2's verification work for this already-huge class (every member
+// re-checked for override compatibility in the subclass), which is what
+// caused AIR's boot-timeout watchdog to kill the app ~1-4s after launch,
+// every time, regardless of how much the class itself was trimmed down
+// (confirmed via extensive bisection — see docs/known-issues.md and
+// _local/plans/PROJECT_PLAN.md). Compiling Gazillionaire.as directly with
+// -preloader/-default-size as flags (not MXML attributes) populates
+// info() correctly with NO extra subclass layer — this is the fix.
 const PRELOADER_CLASS = 'CustomPreloader';
 
 const mxmlcArgs = [
@@ -181,6 +227,31 @@ const mxmlcArgs = [
     '-default-size', String(DEFAULT_WIDTH), String(DEFAULT_HEIGHT),
     `-preloader=${PRELOADER_CLASS}`,
     `-compiler.source-path=${sourceTreeDir}`,
+    `-compiler.source-path+=${GENERATED_SRC_DIR}`,
+    '-define+=CONFIG::performanceInstrumentation,false',
+    // mx.core.TextFieldFactory is only ever referenced reflectively, via
+    // getDefinitionByName("mx.core::TextFieldFactory") inside the Flex
+    // framework's own SystemManager.kickOff() (to register it as the
+    // mx.core::ITextFieldFactory singleton implementation). Nothing in
+    // this app's decompiled source statically imports/instantiates it, so
+    // mxmlc's dead-code elimination silently drops the class from the
+    // compiled SWF; at runtime, getDefinitionByName() then returns null,
+    // Singleton.registerClass() stores that null, and the first component
+    // whose validateSize()/measure() touches UITextFormat's textFieldFactory
+    // getter (Singleton.getInstance) throws "No class registered for
+    // interface 'mx.core::ITextFieldFactory'." — an uncaught exception
+    // thrown from inside an ENTER_FRAME-dispatched callback
+    // (LayoutManager.doPhasedInstantiationCallback), which AIR does not
+    // surface via UncaughtErrorEvent (same swallowing behavior as the
+    // earlier Timer.tick()-context TypeError root cause). This aborts
+    // LayoutManager's phased instantiation permanently (it never
+    // re-attaches its ENTER_FRAME listener), so FlexEvent.CREATION_COMPLETE
+    // never fires, yet nothing crashes and other timers/listeners keep
+    // running fine forever — explaining the "stuck at ~55-60% CPU forever,
+    // no crash" symptom. Force-including the class here (confirmed present
+    // in the pristine original SWF's disassembly, absent from ours without
+    // this flag) fixes it without touching decompiled framework internals.
+    '-includes=mx.core.TextFieldFactory',
     `-output=${OUTPUT_SWF}`,
     `-compiler.external-library-path=${path.resolve(SDK_DIR, 'frameworks')}`,
     '--',

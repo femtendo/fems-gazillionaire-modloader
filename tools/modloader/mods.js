@@ -181,7 +181,7 @@ function checkEngineCompat(manifest, engineVersion) {
     return null;
 }
 
-function computeCacheKey(manifests) {
+function computeCacheKey(manifests, engineSrcDir) {
     const entries = manifests
         .map((m) => {
             const hash = crypto.createHash('sha256');
@@ -193,7 +193,20 @@ function computeCacheKey(manifests) {
             return { id: m.id, version: m.version, contentHash: hash.digest('hex') };
         })
         .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-    return crypto.createHash('sha256').update(JSON.stringify(entries)).digest('hex');
+    // engine/src's own content must be part of the cache key — otherwise a
+    // merged-src cache entry from before an engine/src change (a decompile
+    // fix, a bugfix, anything) gets silently reused forever for any mod set
+    // whose own files haven't changed, serving stale engine code under a
+    // cache "hit". Bit us for real: see _local/plans/PROJECT_PLAN.md session 7.
+    let engineHash = '';
+    if (engineSrcDir) {
+        const hash = crypto.createHash('sha256');
+        for (const f of collectFilesSorted(engineSrcDir)) {
+            hash.update(hashFile(f));
+        }
+        engineHash = hash.digest('hex');
+    }
+    return crypto.createHash('sha256').update(JSON.stringify({ entries, engineHash })).digest('hex');
 }
 
 module.exports = {

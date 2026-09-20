@@ -54,10 +54,32 @@ package
    import mx.utils.StringUtil;
    
    use namespace mx_internal;
-   
+
+   // Forces the [Frame]-splitting the decompile lost: without this, mxmlc
+   // ignores the decompiled _Gazillionaire_mx_managers_SystemManager.as
+   // sitting in source-path and synthesizes its own fresh SystemManager
+   // subclass with no reference to CustomPreloader, so CustomPreloader
+   // ends up bundled into frame2 alongside this huge class (verified via
+   // RABCDAsm) — a chicken-and-egg deadlock: the preloader can't run until
+   // frame2 (which it's meant to show progress for) has already streamed
+   // in. Pointing factoryClass at our own hand-authored subclass (which
+   // hard-references CustomPreloader in its info()) pulls CustomPreloader
+   // into frame1's dependency closure instead, exactly like the original
+   // MXML-compiled build did. See _local/plans/PROJECT_PLAN.md Session 5.
+   [Frame(factoryClass="_Gazillionaire_mx_managers_SystemManager")]
    public class Gazillionaire extends WindowedApplication
    {
-      
+      // DIAGNOSTIC ONLY: fires the instant the VM finishes loading/verifying
+      // this class, before any instance (constructor) exists. Used to test
+      // whether AVM2 class verification of this ~106K-line class is what's
+      // exceeding AIR's boot watchdog, as opposed to instance construction.
+      private static var _diagClassLoaded:Boolean = _diagClassLoad();
+      private static function _diagClassLoad() : Boolean
+      {
+         CustomPreloader.diagLog("GazillionaireImpl class static-init ran (class verified/loaded by VM)");
+         return true;
+      }
+
       private var _878089839frm_AboutGaz:Canvas;
       
       private var _684390181frm_AboutGaz_button_ok:Button;
@@ -45422,13 +45444,13 @@ package
          // [Mixin] metadata the way it does for _Gazillionaire_Styles.
          _Gazillionaire_FlexInit.init(factory);
       }
-      
+
       override public function initialize() : void
       {
          mx_internal::setDocumentDescriptor(this._documentDescriptor_);
          super.initialize();
       }
-      
+
       internal function isPaidOfflineVersion() : Boolean
       {
          return true;

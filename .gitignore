@@ -8,6 +8,7 @@ jpexs-decompiler/
 # build output and caches
 build/
 tools/.sdk/
+tools/.local/
 
 # user-local mod configuration
 mods/enabled.json
