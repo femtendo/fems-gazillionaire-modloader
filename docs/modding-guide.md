@@ -78,6 +78,7 @@ before writing your own:
 | `third-example-new-class` | Adding a brand new class the engine doesn't have |
 | `fourth-example-asset-override` | Overriding a drop-in asset (`assets/109.png`) |
 | `fifth-example-data-a` + `sixth-example-data-b` | Two mods merging disjoint keys of the same `data/balance.json` |
+| `jerma985-mod` | Full-file class override at maximum coverage — every one of `GameStrings`'s ~3000 string values replaced, for stress-testing the text-override path |
 
 None of these are enabled by default — copy IDs into your own
 `mods/enabled.json` to try them.
