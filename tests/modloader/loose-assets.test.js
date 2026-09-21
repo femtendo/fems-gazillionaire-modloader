@@ -137,4 +137,27 @@ function makeGifWithGct({ loopCount, delaysCs, gctSize }) {
     );
 }
 
+const { readSwfStageInfo } = require('../../tools/modloader/loose-assets');
+const fsMod = require('fs');
+const pathMod = require('path');
+
+const FFDEC_JAR = pathMod.join(require('os').homedir(), 'tools/ffdec/ffdec.jar');
+const sampleSwf = fsMod.readdirSync(pathMod.join(__dirname, '../../engine/src/assets'))
+    .find((f) => f.endsWith('.bin'));
+assert.ok(sampleSwf, 'expected at least one .bin (SWF) fixture under engine/src/assets/');
+
+if (fsMod.existsSync(FFDEC_JAR)) {
+    const info = readSwfStageInfo(
+        pathMod.join(__dirname, '../../engine/src/assets', sampleSwf),
+        FFDEC_JAR
+    );
+    assert.ok(info.widthPx > 0, 'widthPx should be a positive number');
+    assert.ok(info.heightPx > 0, 'heightPx should be a positive number');
+    assert.ok(info.frameRate > 0, 'frameRate should be a positive number');
+    assert.ok(info.frameCount >= 1, 'frameCount should be at least 1');
+    console.log('readSwfStageInfo: passed on', sampleSwf, info);
+} else {
+    console.log('readSwfStageInfo: skipped (ffdec not installed on this machine)');
+}
+
 console.log('loose-assets.test.js: all assertions passed');

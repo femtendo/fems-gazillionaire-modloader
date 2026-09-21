@@ -112,4 +112,25 @@ function readGifMeta(buffer) {
     return { loopCount, frameDelaysCs };
 }
 
-module.exports = { readPngDimensions, readGifMeta };
+// Shells out to ffdec's own header dump rather than hand-parsing the
+// SWF header's bit-packed RECT struct (5-bit Nbits prefix, arbitrary bit
+// alignment) — ffdec already does this correctly and this module already
+// depends on ffdec for the flipbook-synthesis step below.
+function readSwfStageInfo(swfPath, ffdecJarPath) {
+    const output = execFileSync('java', ['-jar', ffdecJarPath, '-header', swfPath], {
+        encoding: 'utf8'
+    });
+    const get = (key) => {
+        const m = output.match(new RegExp('^' + key + '=(.+)$', 'm'));
+        if (!m) throw new Error(`ffdec -header output missing "${key}" for ${swfPath}`);
+        return m[1].trim();
+    };
+    return {
+        widthPx: parseInt(get('widthPx'), 10),
+        heightPx: parseInt(get('heightPx'), 10),
+        frameRate: parseFloat(get('frameRate')),
+        frameCount: parseInt(get('frameCount'), 10)
+    };
+}
+
+module.exports = { readPngDimensions, readGifMeta, readSwfStageInfo };
