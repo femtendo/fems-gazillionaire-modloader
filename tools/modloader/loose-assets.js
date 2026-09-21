@@ -323,4 +323,46 @@ function buildFlipbookSwf(framePaths, widthPx, heightPx, frameRate, loopForever,
     fs.rmSync(workDir, { recursive: true, force: true });
 }
 
-module.exports = { readPngDimensions, readGifMeta, readSwfStageInfo, prepareFrames, buildFlipbookSwf };
+function isSwf(buffer) {
+    const sig = buffer.toString('ascii', 0, 3);
+    return sig === 'FWS' || sig === 'CWS' || sig === 'ZWS';
+}
+
+// Single entry point build.js calls. Decides raster-passthrough vs.
+// flipbook-synthesis by sniffing originalAssetPath's own bytes (PNG
+// signature vs. SWF signature FWS/CWS/ZWS) rather than trusting its file
+// extension — several real assets are SWFs saved with .bin/no extension.
+function convertAsset(inputPath, originalAssetPath, outputPath, ffdecJarPath) {
+    const originalBuffer = fs.readFileSync(originalAssetPath);
+    const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'convert-asset-'));
+
+    try {
+        if (isSwf(originalBuffer)) {
+            const stageInfo = readSwfStageInfo(originalAssetPath, ffdecJarPath);
+            const { framePaths, loopForever } = prepareFrames(
+                inputPath, stageInfo.widthPx, stageInfo.heightPx, stageInfo.frameRate, workDir
+            );
+            buildFlipbookSwf(framePaths, stageInfo.widthPx, stageInfo.heightPx, stageInfo.frameRate, loopForever, outputPath, ffdecJarPath);
+        } else {
+            // Raster passthrough: auto-fit the input to the original's own
+            // pixel dimensions (still resize even for a plain PNG-to-PNG
+            // swap, since a modder's replacement image is not guaranteed
+            // to already match).
+            const { width, height } = readPngDimensions(originalBuffer);
+            const inputBuffer = fs.readFileSync(inputPath);
+            if (isGif(inputBuffer)) {
+                throw new Error(
+                    `${path.basename(originalAssetPath)} is a static raster asset — an animated GIF ` +
+                    `can't replace it (there's no SWF timeline here to animate). Supply a static PNG instead.`
+                );
+            }
+            autoFitPng(inputPath, outputPath, width, height);
+        }
+    } finally {
+        fs.rmSync(workDir, { recursive: true, force: true });
+    }
+}
+
+module.exports = {
+    readPngDimensions, readGifMeta, readSwfStageInfo, prepareFrames, buildFlipbookSwf, convertAsset
+};
