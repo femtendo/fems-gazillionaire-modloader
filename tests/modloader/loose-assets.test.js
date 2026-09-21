@@ -220,4 +220,42 @@ if (fsMod.existsSync(FFDEC_JAR)) {
     console.log('buildFlipbookSwf: skipped (ffdec not installed on this machine)');
 }
 
+if (fsMod.existsSync(FFDEC_JAR)) {
+    // loopForever=false must emit a stop tag so the flipbook halts on its
+    // last frame instead of looping. Verified schema (see task-4-report.md):
+    // ffdec's DoActionTag XML field is "actionBytes" (raw hex bytecode),
+    // not a structured actions list — 0x07 = ActionStop, 0x00 = end of
+    // actions. Round-trip through -swf2xml to confirm the tag is really
+    // in the written SWF, not just that -xml2swf silently dropped it.
+    const workDir = fsMod.mkdtempSync(pathMod.join(require('os').tmpdir(), 'flipbook-stop-test-'));
+    const onePixelPng = Buffer.from(
+        '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63f8ffffff7f0009fb03fd2a86e38a' +
+        '0000000049454e44ae426082', 'hex'
+    );
+    const f1 = pathMod.join(workDir, 'f1.png');
+    const f2 = pathMod.join(workDir, 'f2.png');
+    fsMod.writeFileSync(f1, onePixelPng);
+    fsMod.writeFileSync(f2, onePixelPng);
+    const outSwf = pathMod.join(workDir, 'out.swf');
+
+    buildFlipbookSwf([f1, f2], 10, 10, 12, false, outSwf, FFDEC_JAR);
+
+    assert.ok(fsMod.existsSync(outSwf), 'buildFlipbookSwf (loopForever=false) should produce a file');
+    const info = readSwfStageInfo(outSwf, FFDEC_JAR);
+    assert.strictEqual(info.widthPx, 10);
+    assert.strictEqual(info.heightPx, 10);
+    assert.strictEqual(info.frameCount, 2);
+
+    const reexportedXmlPath = pathMod.join(workDir, 'reexport.xml');
+    execFileSync('java', ['-jar', FFDEC_JAR, '-swf2xml', outSwf, reexportedXmlPath], { stdio: 'pipe' });
+    const reexportedXml = fsMod.readFileSync(reexportedXmlPath, 'utf8');
+    assert.ok(
+        /<item type="DoActionTag" actionBytes="0700"/.test(reexportedXml),
+        'loopForever=false should emit a DoActionTag with ActionStop+End bytecode (actionBytes="0700")'
+    );
+    console.log('buildFlipbookSwf (loopForever=false): passed —', info, '(DoActionTag stop tag confirmed present)');
+} else {
+    console.log('buildFlipbookSwf (loopForever=false): skipped (ffdec not installed on this machine)');
+}
+
 console.log('loose-assets.test.js: all assertions passed');
