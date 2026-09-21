@@ -72,6 +72,28 @@ else
     pass=$((pass + 1))
 fi
 
+# 5. Loose-asset deployment: install copies every file listed in
+#    build/output/loose-assets/manifest.json into place under the target's
+#    Resources/ dir, backing each one up; restore reverses it.
+RESOURCES_DIR="$(dirname "$FAKE_ORIGINAL")"
+mkdir -p "$RESOURCES_DIR/SWF" "$FIXTURE_ROOT/build/output/loose-assets/SWF"
+echo "original ship art" > "$RESOURCES_DIR/SWF/SHIP1.SWF"
+echo "modded ship art" > "$FIXTURE_ROOT/build/output/loose-assets/SWF/SHIP1.SWF"
+echo '["SWF/SHIP1.SWF"]' > "$FIXTURE_ROOT/build/output/loose-assets/manifest.json"
+
+# Re-run install fresh (previous test steps already consumed the main-SWF
+# backup/restore cycle above; reset that piece so this section is
+# independent).
+echo "original swf bytes" > "$FAKE_ORIGINAL"
+
+bash "$FIXTURE_ROOT/tools/installer/install.sh" install --target "$FAKE_ORIGINAL"
+check "$(cat "$RESOURCES_DIR/SWF/SHIP1.SWF")" "modded ship art" "loose asset deployed"
+check "$(cat "$RESOURCES_DIR/SWF/SHIP1.SWF.original-backup")" "original ship art" "loose asset backed up"
+
+bash "$FIXTURE_ROOT/tools/installer/install.sh" restore --target "$FAKE_ORIGINAL"
+check "$(cat "$RESOURCES_DIR/SWF/SHIP1.SWF")" "original ship art" "loose asset restored"
+check "$(test -e "$RESOURCES_DIR/SWF/SHIP1.SWF.original-backup" && echo yes || echo no)" "no" "loose asset backup removed after restore"
+
 echo ""
 echo "install.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

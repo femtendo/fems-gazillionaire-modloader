@@ -196,6 +196,37 @@ while [ $# -gt 0 ]; do
 done
 
 BACKUP="${TARGET}.original-backup"
+LOOSE_ASSETS_DIR="$ROOT_DIR/build/output/loose-assets"
+LOOSE_ASSETS_MANIFEST="$LOOSE_ASSETS_DIR/manifest.json"
+RESOURCES_DIR="$(dirname "$TARGET")"
+
+install_loose_assets() {
+    [ -f "$LOOSE_ASSETS_MANIFEST" ] || return 0
+    node -e "JSON.parse(require('fs').readFileSync('$LOOSE_ASSETS_MANIFEST','utf8')).forEach(p=>console.log(p))" | \
+    while IFS= read -r rel; do
+        local dest="$RESOURCES_DIR/$rel"
+        local backup="${dest}.original-backup"
+        [ -f "$dest" ] || { echo "Warning: loose asset target not found, skipping: $dest" >&2; continue; }
+        if [ -e "$backup" ]; then
+            echo "Loose-asset backup already exists at $backup — refusing to overwrite it." >&2
+            exit 1
+        fi
+        cp "$dest" "$backup"
+        cp "$LOOSE_ASSETS_DIR/$rel" "$dest"
+    done
+}
+
+restore_loose_assets() {
+    [ -f "$LOOSE_ASSETS_MANIFEST" ] || return 0
+    node -e "JSON.parse(require('fs').readFileSync('$LOOSE_ASSETS_MANIFEST','utf8')).forEach(p=>console.log(p))" | \
+    while IFS= read -r rel; do
+        local dest="$RESOURCES_DIR/$rel"
+        local backup="${dest}.original-backup"
+        [ -f "$backup" ] || continue
+        cp "$backup" "$dest"
+        rm "$backup"
+    done
+}
 
 case "$COMMAND" in
     install)
@@ -222,6 +253,7 @@ case "$COMMAND" in
         patch_info_plist_if_macos "$TARGET"
         patch_visible_if_macos "$TARGET"
         resign_app_bundle_if_macos "$TARGET"
+        install_loose_assets
         echo "Installed. Original backed up to $BACKUP"
         ;;
 
@@ -242,6 +274,7 @@ case "$COMMAND" in
         unpatch_info_plist_if_macos "$TARGET"
         unpatch_visible_if_macos "$TARGET"
         resign_app_bundle_if_macos "$TARGET"
+        restore_loose_assets
         echo "Restored original SWF to $TARGET, reverted Info.plist/application.xml patches, and removed the backup."
         ;;
 
