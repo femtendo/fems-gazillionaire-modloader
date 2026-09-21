@@ -41,6 +41,9 @@ function readGifMeta(buffer) {
     if ((packedByte & 0x80) !== 0) {
         const gctSize = 2 << (packedByte & 0x07);
         i += gctSize * 3;
+        if (i > buffer.length) {
+            throw new Error('Malformed GIF: truncated');
+        }
     }
 
     let pendingDelay = 10; // GIF default when no Graphic Control Extension precedes a frame

@@ -126,4 +126,15 @@ function makeGifWithGct({ loopCount, delaysCs, gctSize }) {
     );
 }
 
+{
+    // Test truncated GIF with GCT flag set: packed byte 0x87 declares 256-entry color table,
+    // but buffer ends right after LSD, with no GCT bytes. Must throw, not return empty result.
+    const truncatedWithGctFlag = Buffer.from('GIF89a\x01\x00\x01\x00\x87\x00\x00');
+    assert.throws(
+        () => readGifMeta(truncatedWithGctFlag),
+        /Malformed GIF: truncated/,
+        'should throw on GIF with GCT flag but truncated before GCT data'
+    );
+}
+
 console.log('loose-assets.test.js: all assertions passed');
