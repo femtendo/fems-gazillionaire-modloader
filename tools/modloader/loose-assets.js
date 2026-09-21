@@ -364,5 +364,5 @@ function convertAsset(inputPath, originalAssetPath, outputPath, ffdecJarPath) {
 }
 
 module.exports = {
-    readPngDimensions, readGifMeta, readSwfStageInfo, prepareFrames, buildFlipbookSwf, convertAsset
+    readPngDimensions, readGifMeta, readSwfStageInfo, prepareFrames, buildFlipbookSwf, convertAsset, autoFitPng
 };

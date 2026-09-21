@@ -19,6 +19,7 @@ const {
     readJsonObjectSafe,
     collectFilesSorted
 } = require('./mods');
+const { convertAsset, prepareFrames, buildFlipbookSwf, autoFitPng } = require('./loose-assets');
 
 const ROOT = path.resolve(__dirname, '../..');
 const ENGINE_DIR = path.resolve(ROOT, 'engine');
@@ -29,6 +30,12 @@ const GENERATED_SRC_DIR = path.resolve(ROOT, 'build', 'generated');
 const SDK_DIR = path.resolve(ROOT, 'tools', '.sdk', 'flex');
 const MXMLC = path.resolve(SDK_DIR, 'bin', 'mxmlc');
 const OUTPUT_SWF = path.resolve(BUILD_DIR, 'gazillionaire-modded.swf');
+// ffdec is a machine-local tool (not fetched by tools/fetch-sdk.sh, and
+// tools/.local/ / tools/.sdk/ are gitignored/untracked) — every use of it
+// throughout this project's history resolves it at ~/tools/ffdec/ffdec.jar.
+const FFDEC_JAR = path.join(require('os').homedir(), 'tools', 'ffdec', 'ffdec.jar');
+const LOOSE_ASSETS_OUTPUT_DIR = path.resolve(BUILD_DIR, 'loose-assets');
+const LOOSE_ASSETS_MANIFEST = path.resolve(ENGINE_DIR, 'loose-assets-manifest.json');
 
 // Writes engine/src's sibling ModLoaderInfo.as, embedding the actually-
 // resolved enabled mod set as compiled-in constants (not read from disk at
@@ -56,9 +63,65 @@ function writeModLoaderInfo(modManifests, cacheKey) {
     fs.writeFileSync(path.join(GENERATED_SRC_DIR, 'ModLoaderInfo.as'), src);
 }
 
+// Overlays enabled mods' loose-assets/ (SWF/PNG files the engine loads from
+// disk at runtime rather than [Embed]-ing at compile time — see Task 6's
+// touches.looseAssets) onto build/output/loose-assets/, converting each
+// against known target dimensions/frame-rate from a checked-in metadata
+// manifest rather than the real game install (which may not be present on
+// the build machine at all).
+function buildLooseAssetsOverlay(modManifestsInPriorityOrder) {
+    if (!fs.existsSync(LOOSE_ASSETS_MANIFEST)) return; // no loose-asset targets known yet
+    const referenceInfo = JSON.parse(fs.readFileSync(LOOSE_ASSETS_MANIFEST, 'utf8'));
+    fs.rmSync(LOOSE_ASSETS_OUTPUT_DIR, { recursive: true, force: true });
+    const produced = [];
+
+    for (const m of modManifestsInPriorityOrder) {
+        const modLooseAssets = path.join(m._dir, 'loose-assets');
+        if (!fs.existsSync(modLooseAssets)) continue;
+        for (const relPath of collectFilesSorted(modLooseAssets).map((f) => path.relative(modLooseAssets, f))) {
+            const targetResourcesPath = relPath.replace(/\.(png|gif)$/i, () => {
+                // Loose PNG-folder targets keep .PNG; loose SWF-folder
+                // targets become .SWF regardless of whether the modder's
+                // input was a PNG or a GIF.
+                return relPath.startsWith('PNG' + path.sep) ? '.PNG' : '.SWF';
+            });
+            const meta = referenceInfo[targetResourcesPath.replace(/\\/g, '/')];
+            if (!meta) {
+                throw new Error(`loose-assets/${relPath}: no known target "${targetResourcesPath}" in ${LOOSE_ASSETS_MANIFEST} — check the filename against docs/asset-wiki.md`);
+            }
+            const inputPath = path.join(modLooseAssets, relPath);
+            const outputPath = path.join(LOOSE_ASSETS_OUTPUT_DIR, targetResourcesPath);
+            fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+
+            if (targetResourcesPath.toUpperCase().endsWith('.SWF')) {
+                const workDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'loose-swf-'));
+                const { framePaths, loopForever } = prepareFrames(inputPath, meta.widthPx, meta.heightPx, meta.frameRate, workDir);
+                buildFlipbookSwf(framePaths, meta.widthPx, meta.heightPx, meta.frameRate, loopForever, outputPath, FFDEC_JAR);
+                fs.rmSync(workDir, { recursive: true, force: true });
+            } else if (targetResourcesPath.toUpperCase().endsWith('.PNG')) {
+                autoFitPng(inputPath, outputPath, meta.widthPx, meta.heightPx);
+            } else {
+                // MP3: plain passthrough, no conversion.
+                fs.copyFileSync(inputPath, outputPath);
+            }
+            produced.push(targetResourcesPath);
+        }
+    }
+
+    fs.mkdirSync(LOOSE_ASSETS_OUTPUT_DIR, { recursive: true });
+    fs.writeFileSync(path.join(LOOSE_ASSETS_OUTPUT_DIR, 'manifest.json'), JSON.stringify(produced, null, 2) + '\n');
+}
+
 // Verify mxmlc exists
 if (!fs.existsSync(MXMLC)) {
     console.error(`mxmlc not found at ${MXMLC}`);
+    process.exit(1);
+}
+
+// Verify ffdec exists (needed for assets/ conversion and the loose-assets/
+// overlay, both below).
+if (!fs.existsSync(FFDEC_JAR)) {
+    console.error(`ffdec.jar not found at ${FFDEC_JAR}`);
     process.exit(1);
 }
 
@@ -115,16 +178,19 @@ if (enabledModIds.length > 0) {
     const cacheKey = computeCacheKey(modManifests, SRC_DIR);
     writeModLoaderInfo(modManifests, cacheKey);
     const mergedDir = path.join(MERGED_SRC_ROOT, cacheKey);
+    // Lowest priority first, so higher-priority mods overwrite last. Needed
+    // both by the merged-src assembly below (cache-miss only) and by the
+    // loose-assets overlay (which is not part of the merged-src cache and
+    // must run every build regardless of cache hit/miss).
+    const inPriorityOrder = [...modManifests].sort(
+        (a, b) => (a.priority || 0) - (b.priority || 0)
+    );
     if (fs.existsSync(mergedDir) && fs.readdirSync(mergedDir).length > 0) {
         console.log(`Cache hit: reusing merged source at ${mergedDir}`);
     } else {
         console.log(`Cache miss: assembling merged source at ${mergedDir}`);
         fs.mkdirSync(mergedDir, { recursive: true });
         fs.cpSync(SRC_DIR, mergedDir, { recursive: true });
-        // Lowest priority first, so higher-priority mods overwrite last.
-        const inPriorityOrder = [...modManifests].sort(
-            (a, b) => (a.priority || 0) - (b.priority || 0)
-        );
         for (const m of inPriorityOrder) {
             const modSrc = path.join(m._dir, 'src');
             if (fs.existsSync(modSrc)) {
@@ -135,10 +201,24 @@ if (enabledModIds.length > 0) {
         // Assets: full-file overlay onto merged src/assets/ (same rule as
         // src/ — engine Embed tags resolve assets relative to the source
         // file's directory, so mod assets/ land at mergedDir/assets/).
+        // A modder's PNG/GIF replacing a SWF-shaped [Embed] asset must be
+        // converted (flipbook-synthesized), not plain-copied, or the
+        // compiled SWF ends up with a broken (un-decodable) embed.
         for (const m of inPriorityOrder) {
             const modAssets = path.join(m._dir, 'assets');
-            if (fs.existsSync(modAssets)) {
-                fs.cpSync(modAssets, path.join(mergedDir, 'assets'), { recursive: true, force: true });
+            if (!fs.existsSync(modAssets)) continue;
+            for (const relPath of collectFilesSorted(modAssets).map((f) => path.relative(modAssets, f))) {
+                const inputPath = path.join(modAssets, relPath);
+                const originalPath = path.join(SRC_DIR, 'assets', relPath);
+                const outputPath = path.join(mergedDir, 'assets', relPath);
+                fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+                if (fs.existsSync(originalPath)) {
+                    convertAsset(inputPath, originalPath, outputPath, FFDEC_JAR);
+                } else {
+                    // Brand-new asset the engine doesn't have yet — nothing to
+                    // convert against, plain copy (same as today's behavior).
+                    fs.copyFileSync(inputPath, outputPath);
+                }
             }
         }
 
@@ -170,6 +250,7 @@ if (enabledModIds.length > 0) {
         }
     }
     sourceTreeDir = mergedDir;
+    buildLooseAssetsOverlay(inPriorityOrder);
 } else {
     writeModLoaderInfo([], '');
 }

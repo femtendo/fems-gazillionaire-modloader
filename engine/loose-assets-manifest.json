@@ -1,0 +1,932 @@
+{
+  "SWF/AGENT_L.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/ASIAN_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/BANDITS.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/BANK1A_N.SWF": {
+    "widthPx": 276,
+    "heightPx": 389,
+    "frameRate": 12
+  },
+  "SWF/BANK1_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/BANK2A_N.SWF": {
+    "widthPx": 276,
+    "heightPx": 389,
+    "frameRate": 12
+  },
+  "SWF/BANK2_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/BASS.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/BASS2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/BOBBLE.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/BOLLUP.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/BROKER_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/BRONAP.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/CLOCK_L.SWF": {
+    "widthPx": 306,
+    "heightPx": 422,
+    "frameRate": 12
+  },
+  "SWF/CORNU_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/CREW_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/CREW_S.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/CURTIS.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/CYLET.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/DARLEEN.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/DEALER_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/DEXXYGAS.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/DRED.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/FEZFAFA.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/FIRE.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/FRAC.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/FRAC2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/GAZINFO.SWF": {
+    "widthPx": 380,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/GAZ_TITLE_S.SWF": {
+    "widthPx": 660,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/GURTTLE.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/HANDS.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/HAPA.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/HISTORY.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/HORK.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/HORK2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/HUNGO.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/INIT.SWF": {
+    "widthPx": 400,
+    "heightPx": 365,
+    "frameRate": 12
+  },
+  "SWF/INIT_MONSTER.SWF": {
+    "widthPx": 116,
+    "heightPx": 122,
+    "frameRate": 12
+  },
+  "SWF/INSURE_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/INSURE_S.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/ISO.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/LAVAMIND_S.SWF": {
+    "widthPx": 380,
+    "heightPx": 500,
+    "frameRate": 12
+  },
+  "SWF/LEAHY.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/LEVEL_PLANET.SWF": {
+    "widthPx": 760,
+    "heightPx": 315,
+    "frameRate": 12
+  },
+  "SWF/LIMPUS.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/LIPPO.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/LOAN2_N.SWF": {
+    "widthPx": 276,
+    "heightPx": 389,
+    "frameRate": 12
+  },
+  "SWF/LOAN_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/LORD.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/LORO.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/LORO2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/LOSE.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/LUMBOR.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/MECHAN_L.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/MECH_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/MEEG.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/METEOR.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/MIPPI.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/MIRA.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/MIRA2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/MONEY_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/MONK_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/MOOGLERS.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/MULLS.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/NEBBIT.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/NECTUM.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/NEWCONTINUE.SWF": {
+    "widthPx": 450,
+    "heightPx": 315,
+    "frameRate": 12
+  },
+  "SWF/NEWS_L.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/NIBBLE.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/NOSH.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/NOSH2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/NOSH_H.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/OOOM.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/OOOM2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/PEELIA_L.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/PILOT.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/POLICE.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/PROPEOPLE.SWF": {
+    "widthPx": 380,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/PYKE.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/PYKE2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/QUASO.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/QUEG.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/QUEG2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/QUIST.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/REBELS.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/REPAIR.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/RJ.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/SABOTAGE.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/SCOOTER.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/SHIMMER.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/SHIP1.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/SHIP10.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/SHIP10A.SWF": {
+    "widthPx": 80,
+    "heightPx": 50,
+    "frameRate": 12
+  },
+  "SWF/SHIP11.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/SHIP11A.SWF": {
+    "widthPx": 80,
+    "heightPx": 50,
+    "frameRate": 12
+  },
+  "SWF/SHIP12.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/SHIP12A.SWF": {
+    "widthPx": 80,
+    "heightPx": 50,
+    "frameRate": 12
+  },
+  "SWF/SHIP1A.SWF": {
+    "widthPx": 80,
+    "heightPx": 50,
+    "frameRate": 12
+  },
+  "SWF/SHIP2.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/SHIP2A.SWF": {
+    "widthPx": 80,
+    "heightPx": 50,
+    "frameRate": 12
+  },
+  "SWF/SHIP3.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/SHIP3A.SWF": {
+    "widthPx": 80,
+    "heightPx": 50,
+    "frameRate": 12
+  },
+  "SWF/SHIP4.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/SHIP4A.SWF": {
+    "widthPx": 80,
+    "heightPx": 50,
+    "frameRate": 12
+  },
+  "SWF/SHIP5.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/SHIP5A.SWF": {
+    "widthPx": 80,
+    "heightPx": 50,
+    "frameRate": 12
+  },
+  "SWF/SHIP6.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/SHIP6A.SWF": {
+    "widthPx": 80,
+    "heightPx": 50,
+    "frameRate": 12
+  },
+  "SWF/SHIP7.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/SHIP7A.SWF": {
+    "widthPx": 80,
+    "heightPx": 50,
+    "frameRate": 12
+  },
+  "SWF/SHIP8.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/SHIP8A.SWF": {
+    "widthPx": 80,
+    "heightPx": 50,
+    "frameRate": 12
+  },
+  "SWF/SHIP9.SWF": {
+    "widthPx": 320,
+    "heightPx": 200,
+    "frameRate": 12
+  },
+  "SWF/SHIP9A.SWF": {
+    "widthPx": 80,
+    "heightPx": 50,
+    "frameRate": 12
+  },
+  "SWF/SLEG.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/SNOZ.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/SOOTH_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/SPEEVAK.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/SPIKE.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/SQUOWK.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/STARS2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/STARS_BG.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/STORM.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/STUBBS.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/STYE.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/STYE2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/TATILUS.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/TAX1H_N.SWF": {
+    "widthPx": 396,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/TAX1_N.SWF": {
+    "widthPx": 380,
+    "heightPx": 300,
+    "frameRate": 12
+  },
+  "SWF/TAX2H_N.SWF": {
+    "widthPx": 396,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/TAX2_N.SWF": {
+    "widthPx": 380,
+    "heightPx": 300,
+    "frameRate": 12
+  },
+  "SWF/TEAL.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/TEETER.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/TILO.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/TILO2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/VAPOR.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/VEXX.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/VEXX2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/WAREHOUS.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/WEATHER_L.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/WHIRL.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/WHITE_H.SWF": {
+    "widthPx": 416,
+    "heightPx": 260,
+    "frameRate": 12
+  },
+  "SWF/WHITE_V.SWF": {
+    "widthPx": 326,
+    "heightPx": 452,
+    "frameRate": 12
+  },
+  "SWF/WICKY.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/WIN.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/WOBBLER.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/XEEN.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/XEEN2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/YOYO.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/ZAP_INTRO.SWF": {
+    "widthPx": 380,
+    "heightPx": 500,
+    "frameRate": 12
+  },
+  "SWF/ZILE.SWF": {
+    "widthPx": 640,
+    "heightPx": 480,
+    "frameRate": 12
+  },
+  "SWF/ZILE2.SWF": {
+    "widthPx": 760,
+    "heightPx": 570,
+    "frameRate": 12
+  },
+  "SWF/ZINN2_N.SWF": {
+    "widthPx": 276,
+    "heightPx": 389,
+    "frameRate": 12
+  },
+  "SWF/ZINN_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/ZOBROK_N.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "SWF/ZOBROK_S.SWF": {
+    "widthPx": 306,
+    "heightPx": 432,
+    "frameRate": 12
+  },
+  "PNG/BASS3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/BLACK.PNG": {
+    "widthPx": 1,
+    "heightPx": 1,
+    "frameRate": 0
+  },
+  "PNG/DIME.PNG": {
+    "widthPx": 300,
+    "heightPx": 480,
+    "frameRate": 0
+  },
+  "PNG/FRAC3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/HORK3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/LAVAMIND.PNG": {
+    "widthPx": 485,
+    "heightPx": 750,
+    "frameRate": 0
+  },
+  "PNG/LORO3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/MIRA3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/NOSH3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/OOOM3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/OP1.PNG": {
+    "widthPx": 448,
+    "heightPx": 286,
+    "frameRate": 0
+  },
+  "PNG/OP1A.PNG": {
+    "widthPx": 223,
+    "heightPx": 198,
+    "frameRate": 0
+  },
+  "PNG/OP2.PNG": {
+    "widthPx": 448,
+    "heightPx": 286,
+    "frameRate": 0
+  },
+  "PNG/OP2A.PNG": {
+    "widthPx": 150,
+    "heightPx": 198,
+    "frameRate": 0
+  },
+  "PNG/OP3.PNG": {
+    "widthPx": 448,
+    "heightPx": 286,
+    "frameRate": 0
+  },
+  "PNG/OP3A.PNG": {
+    "widthPx": 207,
+    "heightPx": 198,
+    "frameRate": 0
+  },
+  "PNG/OP4.PNG": {
+    "widthPx": 448,
+    "heightPx": 286,
+    "frameRate": 0
+  },
+  "PNG/OP4A.PNG": {
+    "widthPx": 201,
+    "heightPx": 198,
+    "frameRate": 0
+  },
+  "PNG/OP5.PNG": {
+    "widthPx": 448,
+    "heightPx": 286,
+    "frameRate": 0
+  },
+  "PNG/OP5A.PNG": {
+    "widthPx": 271,
+    "heightPx": 158,
+    "frameRate": 0
+  },
+  "PNG/OP6.PNG": {
+    "widthPx": 448,
+    "heightPx": 286,
+    "frameRate": 0
+  },
+  "PNG/OP6A.PNG": {
+    "widthPx": 189,
+    "heightPx": 198,
+    "frameRate": 0
+  },
+  "PNG/PYKE3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/QUEG3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/STYE3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/TILO3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/TITLE.PNG": {
+    "widthPx": 851,
+    "heightPx": 128,
+    "frameRate": 0
+  },
+  "PNG/VEXX3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/XEEN3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  },
+  "PNG/ZILE3.PNG": {
+    "widthPx": 1024,
+    "heightPx": 768,
+    "frameRate": 0
+  }
+}
