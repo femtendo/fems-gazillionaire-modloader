@@ -28,34 +28,48 @@ PATTERN="$(IFS='|'; echo "${DISALLOWED_TERMS[*]}")"
 
 fail=0
 
+# Keep origin/* refs current so the "new branch" case below can tell what's
+# already been approved and pushed under a different ref, instead of
+# re-flagging old history every time a fresh branch is pushed for the first
+# time. Best-effort: a push already requires network, so this should
+# normally succeed; if it doesn't, we fall through to whatever origin/* refs
+# are already known locally rather than hard-failing the hook itself.
+git fetch origin --quiet 2>/dev/null || true
+
 check_range() {
-    local range="$1"
+    local desc="$1"
+    shift
 
     local hits
-    hits="$(git log "$range" --format='%H %s%n%b' 2>/dev/null | grep -iE "$PATTERN" || true)"
+    hits="$(git log "$@" --format='%H %s%n%b' 2>/dev/null | grep -iE "$PATTERN" || true)"
     if [ -n "$hits" ]; then
-        echo "pre-push: a commit message in $range matches a disallowed term:" >&2
+        echo "pre-push: a commit message in $desc matches a disallowed term:" >&2
         echo "$hits" >&2
         fail=1
     fi
 
     # Excludes this hook's own directory: its rule list necessarily contains
     # the terms it's checking for.
-    if git log "$range" -p -- . ':!.githooks' 2>/dev/null | grep -E '^\+' | grep -qiE "$PATTERN"; then
-        echo "pre-push: a diff in $range adds a line matching a disallowed term" >&2
+    if git log "$@" -p -- . ':!.githooks' 2>/dev/null | grep -E '^\+' | grep -qiE "$PATTERN"; then
+        echo "pre-push: a diff in $desc adds a line matching a disallowed term" >&2
         fail=1
     fi
 }
 
 scan_secrets() {
-    local range="$1"
+    local desc="$1"
+    shift
     if ! command -v gitleaks >/dev/null 2>&1; then
-        echo "pre-push: gitleaks not found (brew install gitleaks) — cannot verify $range is secret-free" >&2
+        echo "pre-push: gitleaks not found (brew install gitleaks) — cannot verify $desc is secret-free" >&2
         fail=1
         return
     fi
-    if ! gitleaks detect --source . --log-opts="$range" --no-banner --log-level error; then
-        echo "pre-push: gitleaks flagged a potential secret in $range" >&2
+    # gitleaks passes --log-opts straight through to its own internal
+    # `git log`, so a space-joined arg list works the same as passing them
+    # directly to git.
+    local log_opts="$*"
+    if ! gitleaks detect --source . --log-opts="$log_opts" --no-banner --log-level error; then
+        echo "pre-push: gitleaks flagged a potential secret in $desc" >&2
         fail=1
     fi
 }
@@ -64,13 +78,20 @@ while read -r local_ref local_oid remote_ref remote_oid; do
     [ "$local_oid" = "$ZERO" ] && continue
 
     if [ "$remote_oid" = "$ZERO" ]; then
-        range="$local_oid"
+        # Brand-new ref on the remote: scanning full history back to the
+        # repo's root would re-flag commits that are already sitting on
+        # origin under a different ref (e.g. main) and were already
+        # approved. Only scan what isn't already reachable from some other
+        # remote-tracking ref.
+        desc="$local_oid (new ref, excluding origin/*)"
+        range_args=("$local_oid" "--not" "--remotes=origin")
     else
-        range="$remote_oid..$local_oid"
+        desc="$remote_oid..$local_oid"
+        range_args=("$remote_oid..$local_oid")
     fi
 
-    check_range "$range"
-    scan_secrets "$range"
+    check_range "$desc" "${range_args[@]}"
+    scan_secrets "$desc" "${range_args[@]}"
 done
 
 exit "$fail"

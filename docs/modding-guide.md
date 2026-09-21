@@ -57,6 +57,17 @@ message instead of compiling against an engine it wasn't written for.
   mod's actual JSON *keys* matter for conflict detection, not the whole
   file, so `touches.data` conflicts are reported per key.
 
+## Finding an asset to override
+
+Before writing an `assets/` override, look up the asset in
+[`docs/asset-wiki.md`](asset-wiki.md) — it catalogs every named, findable
+asset in the game (planets, HUD icons, GUI chrome, ships, NPCs, sounds, and
+more) with its exact file path and a thumbnail where applicable. It also
+notes which asset channels are overridable today via the mechanism above and
+which aren't yet (loose `.swf`/`.png`/`.mp3` files loaded by runtime
+filesystem path need a different pipeline — see that doc's "Known gaps"
+section).
+
 ## Enabling mods
 
 List enabled mod IDs in your local `mods/enabled.json` (not committed) and
