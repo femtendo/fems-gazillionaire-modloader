@@ -73,7 +73,12 @@ function buildLooseAssetsOverlay(modManifestsInPriorityOrder) {
     if (!fs.existsSync(LOOSE_ASSETS_MANIFEST)) return; // no loose-asset targets known yet
     const referenceInfo = JSON.parse(fs.readFileSync(LOOSE_ASSETS_MANIFEST, 'utf8'));
     fs.rmSync(LOOSE_ASSETS_OUTPUT_DIR, { recursive: true, force: true });
-    const produced = [];
+    // A Set, not an array: a suppressed-priority mod and the winning mod can
+    // both physically ship a file at the same loose-assets path (both get
+    // iterated and converted/copied in priority order, even though only the
+    // higher-priority one's bytes end up on disk at the end) — the produced
+    // manifest must list each target path once, not once per contributing mod.
+    const produced = new Set();
 
     for (const m of modManifestsInPriorityOrder) {
         const modLooseAssets = path.join(m._dir, 'loose-assets');
@@ -104,13 +109,24 @@ function buildLooseAssetsOverlay(modManifestsInPriorityOrder) {
                 // MP3: plain passthrough, no conversion.
                 fs.copyFileSync(inputPath, outputPath);
             }
-            produced.push(targetResourcesPath);
+            produced.add(targetResourcesPath);
         }
     }
 
     fs.mkdirSync(LOOSE_ASSETS_OUTPUT_DIR, { recursive: true });
-    fs.writeFileSync(path.join(LOOSE_ASSETS_OUTPUT_DIR, 'manifest.json'), JSON.stringify(produced, null, 2) + '\n');
+    fs.writeFileSync(path.join(LOOSE_ASSETS_OUTPUT_DIR, 'manifest.json'), JSON.stringify([...produced], null, 2) + '\n');
 }
+
+// Exported for tests/modloader/loose-assets-overlay.test.js, which exercises
+// buildLooseAssetsOverlay directly against fixture mods without going
+// through the mxmlc-availability gate below (mxmlc is unrelated to this
+// function, but a plain `require('./build')` would otherwise immediately
+// run the whole build — see the `require.main === module` guard below).
+module.exports = { buildLooseAssetsOverlay, LOOSE_ASSETS_MANIFEST, LOOSE_ASSETS_OUTPUT_DIR, FFDEC_JAR };
+
+// Everything below only runs when this file is executed directly (node
+// tools/modloader/build.js), not when it's require()'d by a test.
+if (require.main === module) {
 
 // Verify mxmlc exists
 if (!fs.existsSync(MXMLC)) {
@@ -369,3 +385,5 @@ if (fs.existsSync(OUTPUT_SWF)) {
     console.error(`\nFailed! Output SWF not found at ${OUTPUT_SWF}`);
     process.exit(1);
 }
+
+} // if (require.main === module)
