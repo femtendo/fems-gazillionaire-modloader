@@ -54,6 +54,7 @@ function computeTouchSets(manifests) {
     for (const m of manifests) {
         const set = new Set(m.touches?.classes || []);
         for (const a of m.touches?.assets || []) set.add('asset:' + a);
+        for (const la of m.touches?.looseAssets || []) set.add('looseAsset:' + la);
         for (const d of m.touches?.data || []) {
             const dataPath = m._dir ? path.join(m._dir, 'data', d) : null;
             const parsed = dataPath && fs.existsSync(dataPath) ? readJsonObjectSafe(dataPath) : null;
@@ -147,16 +148,17 @@ function validateTouches(manifest) {
         }
     }
 
-    for (const kind of ['assets', 'data']) {
+    for (const kind of ['assets', 'looseAssets', 'data']) {
+        const dirName = kind === 'looseAssets' ? 'loose-assets' : kind;
         const declared = new Set(touches[kind] || []);
         for (const p of declared) {
-            if (!fs.existsSync(path.join(dir, kind, p))) {
-                errors.push(`${manifest.id}: touches.${kind} declares "${p}" but ${kind}/${p} does not exist`);
+            if (!fs.existsSync(path.join(dir, dirName, p))) {
+                errors.push(`${manifest.id}: touches.${kind} declares "${p}" but ${dirName}/${p} does not exist`);
             }
         }
-        for (const f of relFilesUnder(path.join(dir, kind))) {
+        for (const f of relFilesUnder(path.join(dir, dirName))) {
             if (!declared.has(f)) {
-                errors.push(`${manifest.id}: ${kind}/${f} exists but is not declared in touches.${kind}`);
+                errors.push(`${manifest.id}: ${dirName}/${f} exists but is not declared in touches.${kind}`);
             }
         }
     }

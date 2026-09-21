@@ -66,4 +66,31 @@ function manifest(id, priority, touches) {
     assert.strictEqual(hardFailures.length, 0);
 }
 
+// touches.looseAssets participates in conflict detection the same way
+// touches.assets does, under its own 'looseAsset:' namespace.
+{
+    const mods = [
+        manifest('a', 0, { classes: [], data: [], assets: [], looseAssets: ['SWF/SHIP1.SWF'] }),
+        manifest('b', 0, { classes: [], data: [], assets: [], looseAssets: ['SWF/SHIP1.SWF'] })
+    ];
+    const { hardFailures } = detectConflicts(
+        computeTouchSets(mods),
+        new Map(mods.map((m) => [m.id, m]))
+    );
+    assert.strictEqual(hardFailures.length, 1);
+    assert.deepStrictEqual(hardFailures[0].overlap, ['looseAsset:SWF/SHIP1.SWF']);
+}
+{
+    // Different loose-asset paths never conflict.
+    const mods = [
+        manifest('a', 0, { classes: [], data: [], assets: [], looseAssets: ['SWF/SHIP1.SWF'] }),
+        manifest('b', 0, { classes: [], data: [], assets: [], looseAssets: ['SWF/SHIP2.SWF'] })
+    ];
+    const { hardFailures } = detectConflicts(
+        computeTouchSets(mods),
+        new Map(mods.map((m) => [m.id, m]))
+    );
+    assert.strictEqual(hardFailures.length, 0);
+}
+
 console.log('conflicts.test.js: all assertions passed');
