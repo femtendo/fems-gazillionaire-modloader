@@ -119,6 +119,64 @@ functionally blank placeholder `SpriteAsset`s (minor color-fill UI
 element, not game logic). Revisit with real asset content if it turns out
 visible in-game.
 
+### Correction: the 5 cursor classes were NOT vestigial — real art recovered
+
+The paragraph above previously lumped the 5 `mx.skins.cursor.*` embed
+wrapper classes (`DragCopy`/`DragLink`/`DragMove`/`DragReject`/`BusyCursor`,
+symbols 22/28/34/33/47) in with the harmless blank-placeholder case. That
+was wrong. These 5 classes are genuinely wired into
+`mx.managers.CursorManager` via `_Gazillionaire_Styles.as` (`copyCursor`,
+`linkCursor`, `moveCursor`, `rejectCursor`, `busyCursorBackground`) and are
+shown to the player during real drag-and-drop (e.g. dragging cargo between
+warehouse slots).
+
+Verified against the original, unmodified `Gazillionaire.swf` with ffdec:
+running `-export symbolClass` shows character IDs 22/28/33/34/47 are
+double-registered — once under the Flex framework's own
+`mx.skins.cursor.DragCopy` / `DragLink` / `DragReject` / `DragMove` /
+`BusyCursor` classes, and again under the game's `_class_embed_css_...`
+wrapper classes. Both class names point at the exact same compiled
+character, i.e. the wrapper classes are the framework's *own* standard
+drag-cursor art, not an empty stub. Dumping the SWF to XML
+(`-swf2xml`) and walking the nested `DefineSprite`/`DefineShape4` tree
+confirms real, distinct vector art for 4 of the 5:
+
+- **DragCopy (symbol 22)**: shared arrow glyph (shapes 17+18) with a
+  green "+" badge (shape 13, gradient `#66DD55`→`#009900`) and a white
+  highlight (shape 15) at the bottom-right.
+- **DragReject (symbol 33)**: same arrow, red "no" badge (shape 29,
+  gradient `#FE5050`→`#CC0000`) with a white ring outline (shape 31).
+- **DragLink (symbol 28)**: same arrow, a gray "page" badge (shape 23,
+  gradient `#999999`→`#666666`) with a white ring (shape 25).
+- **DragMove (symbol 34)**: the plain shared arrow glyph, no badge — this
+  matches Flex's own default drag-cursor design, where "move" has no
+  special decoration and only copy/link/reject get colored badges.
+- **BusyCursor background (symbol 47)**: a 4-ring concentric halo
+  (shadow, translucent white, gradient ring, white ring — shapes
+  35/38/41/44), the background glow drawn behind the framework's spinning
+  `mx.skins.halo.BusyCursor` foreground.
+
+(Note: `busyCursor` itself, in the `mx.managers.CursorManager` style
+block, is assigned the Flex framework's own `BusyCursor` class directly —
+that one really is a non-issue. It's `busyCursorBackground` that uses the
+embedded symbol-47 wrapper class, and that *is* live.)
+
+Fix: reconstructed each cursor's composite art as a standalone PNG from
+the exported shape layers (positioned using the SWF's own `PlaceObject3`
+matrices — not pixel-identical to Flash's renderer, but built from the
+genuine original vector art, not a reconstruction from scratch) and
+re-wired the 5 wrapper classes from blank `SpriteAsset` stubs to real
+`[Embed(source="assets/...png")]` `BitmapAsset`s:
+
+- `engine/src/assets/22_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragCopy_806051697.png`
+- `engine/src/assets/28_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragLink_806313702.png`
+- `engine/src/assets/33_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragReject_681200837.png`
+- `engine/src/assets/34_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragMove_806339277.png`
+- `engine/src/assets/47_class_embed_css_Assets_swf_976127064_mx_skins_cursor_BusyCursor_487872263.png`
+
+Modders can now override any of these 5 cursor icons like any other
+overridable asset. See `docs/asset-inventory.md` for thumbnails.
+
 Originally affected files (kept for reference):
 
 - `Gazillionaire_PlanetBass1Class.as` — embeds `symbol90` from `assets.swf`

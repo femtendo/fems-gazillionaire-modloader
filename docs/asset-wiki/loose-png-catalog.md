@@ -88,20 +88,7 @@ strings in the compiled MXML descriptor tree, or built dynamically at runtime
 | OP5A.PNG | ![thumb](thumbnails/loose-png/op5a.png) | opponent-portrait | Opponent 5 portrait (alt/unused) | *(none — orphaned)* | Same character as OP5, alt expression |
 | OP6.PNG | ![thumb](thumbnails/loose-png/op6.png) | opponent-portrait | Opponent 6 portrait | same call sites, `n=6` | Purple teardrop-headed creature with an insectoid clawed leg |
 | OP6A.PNG | ![thumb](thumbnails/loose-png/op6a.png) | opponent-portrait | Opponent 6 portrait (alt/unused) | *(none — orphaned)* | Same character as OP6, alt expression |
-| VEXX3.PNG | ![thumb](thumbnails/loose-png/vexx3.png) | planet-closeup (dead code) | Vexx — level 3 close-up | `planet_image(param1,3)` — unreachable, only caller passes `param2=2` | Ringed rocky/metallic planet |
-| PYKE3.PNG | ![thumb](thumbnails/loose-png/pyke3.png) | planet-closeup (dead code) | Pyke — level 3 close-up | `planet_image(param1,3)` — unreachable | |
-| MIRA3.PNG | ![thumb](thumbnails/loose-png/mira3.png) | planet-closeup (dead code) | Mira — level 3 close-up | `planet_image(param1,3)` — unreachable | |
-| STYE3.PNG | ![thumb](thumbnails/loose-png/stye3.png) | planet-closeup (dead code) | Stye — level 3 close-up | `planet_image(param1,3)` — unreachable | |
-| LORO3.PNG | ![thumb](thumbnails/loose-png/loro3.png) | planet-closeup (dead code) | Loro — level 3 close-up | `planet_image(param1,3)` — unreachable | |
-| ZILE3.PNG | ![thumb](thumbnails/loose-png/zile3.png) | planet-closeup (dead code) | Zile — level 3 close-up | `planet_image(param1,3)` — unreachable | |
-| FRAC3.PNG | ![thumb](thumbnails/loose-png/frac3.png) | planet-closeup (dead code) | Frac — level 3 close-up | `planet_image(param1,3)` — unreachable | |
-| TILO3.PNG | ![thumb](thumbnails/loose-png/tilo3.png) | planet-closeup (dead code) | Tilo — level 3 close-up | `planet_image(param1,3)` — unreachable | |
-| QUEG3.PNG | ![thumb](thumbnails/loose-png/queg3.png) | planet-closeup (dead code) | Queg — level 3 close-up | `planet_image(param1,3)` — unreachable | |
-| XEEN3.PNG | ![thumb](thumbnails/loose-png/xeen3.png) | planet-closeup (dead code) | Xeen — level 3 close-up | `planet_image(param1,3)` — unreachable | |
-| OOOM3.PNG | ![thumb](thumbnails/loose-png/ooom3.png) | planet-closeup (dead code) | Ooom — level 3 close-up | `planet_image(param1,3)` — unreachable | |
-| HORK3.PNG | ![thumb](thumbnails/loose-png/hork3.png) | planet-closeup (dead code) | Hork — level 3 close-up | `planet_image(param1,3)` — unreachable | |
-| BASS3.PNG | ![thumb](thumbnails/loose-png/bass3.png) | planet-closeup (dead code) | Bass — level 3 close-up | `planet_image(param1,3)` — unreachable | |
-| NOSH3.PNG | ![thumb](thumbnails/loose-png/nosh3.png) | planet-closeup (dead code) | Nosh — level 3 close-up | `planet_image(param1,3)` — unreachable | |
+| n/a | — | planet-closeup (dead code) | Planet assets consolidated | — | See [Planets](Asset-Wiki-Planets) / [planets-catalog.md](planets-catalog.md) — all 14 `<PLANET>3.PNG` level-3 dead-code rows moved there, alongside each planet's other assets. |
 | BLACK.PNG | ![thumb](thumbnails/loose-png/black.png) | gui | Blank/reset placeholder | Dozens of `Image.source` resets across nearly every screen, e.g. Gazillionaire.as:5033, 7269, 8667, 12513, 37981, 50100, 50325, 50718, 62908-62914, 63082/63093, 72061/72147/72183 | 142-byte solid black 1x1-ish placeholder |
 | DIME.PNG | ![thumb](thumbnails/loose-png/dime.png) | gui | Gold coin / windfall seal | `frm_Travel2_vertical_image`, event 23 (Gazillionaire.as:63993) | Crowned figure embossed on a gold coin |
 | TITLE.PNG | ![thumb](thumbnails/loose-png/title.png) | other | Gazillionaire logo wordmark (orphaned) | *(none found — live title screen uses `SWF/GAZ_TITLE_S.SWF` instead)* | Orange/yellow "Gazillionaire" TM wordmark |

@@ -46,6 +46,14 @@ the same precedent already established for the checked-in originals under
   all 175 `.mp3` sound files under `Resources/MP3/`: UI sounds, gameplay SFX,
   voice lines, per-planet ambience, and per-commodity jingles. No thumbnails
   (not applicable to audio).
+- **[`asset-wiki/planets-catalog.md`](asset-wiki/planets-catalog.md)** — all
+  14 planets' assets in one place: the main-SWF icon, the level-2 turn-start
+  SWF, the dead-code level-3 PNG close-up, and the resources-folder
+  duplicate, organized by planet name instead of by source-file type.
+  Previously scattered across `asset-inventory.md`,
+  `asset-wiki/external-swf-catalog.md`, `asset-wiki/loose-png-catalog.md`,
+  and `asset-wiki/loose-resources-catalog.md` — those four docs now just
+  point here for planet rows.
 
 ## Known gaps
 

@@ -90,9 +90,9 @@ Total external SWF files cataloged: **156**. Static (1 frame): **127**. Animated
 | Category | Count |
 |---|---|
 | Ship | 24 |
-| Alien NPC (named character) | 88 |
-| GUI | 2 |
-| Environment (planet surface) | 28 |
+| Alien NPC (named character) | 87 (MONEY_N.SWF recategorized to GUI, see below) |
+| GUI | 3 |
+| Environment (planet surface) | 0 (consolidated — see [planets-catalog.md](planets-catalog.md)) |
 | Background | 2 |
 | Title Screen | 2 |
 | Cutscene / Intro | 8 |
@@ -173,7 +173,7 @@ Total external SWF files cataloged: **156**. Static (1 frame): **127**. Animated
 | MEEG.SWF | ![thumb](thumbnails/external-swf/meeg.swf.png) | 1 | alien-npc | Meeg | `frm_Travel2_vertical_image` (Gazillionaire.as:64215) |  |
 | METEOR.SWF | ![thumb](thumbnails/external-swf/meteor.swf.png) | 1 | alien-npc | Meteor | `frm_Travel2_image_ship` (Gazillionaire.as:66302) |  |
 | MIPPI.SWF | ![thumb](thumbnails/external-swf/mippi.swf.png) | 1 | alien-npc | Mippi | `frm_Travel2_image_ship` (Gazillionaire.as:66404) |  |
-| MONEY_N.SWF | ![thumb](thumbnails/external-swf/money_n.swf.png) | 11 | alien-npc | Money (NPC) | `frm_Travel5_image` (Gazillionaire.as:52052) |  |
+| MONEY_N.SWF | ![thumb](thumbnails/external-swf/money_n.swf.png) | 11 | gui | Cash Reward Animation | `frm_Travel5_image` (Gazillionaire.as:52052), `frm_Travel2_vertical_image` (Gazillionaire.as:64446, 64838, 64855) | Not an NPC — an 11-frame growing stack-of-cash-bills animation shown whenever a "good event" grants the player cash (`this.g.p[this.g.player].cash += ...`, paired with `MP3/GOOD*.MP3` cues). Thumbnail regenerated from frame 11 (the earlier thumbnail captured frame 1, which is a blank/empty starting frame of the animation, not a broken export). |
 | MONK_N.SWF | ![thumb](thumbnails/external-swf/monk_n.swf.png) | 31 | alien-npc | Monk (NPC) | `frm_Special_image` (Gazillionaire.as:56384) |  |
 | MOOGLERS.SWF | ![thumb](thumbnails/external-swf/mooglers.swf.png) | 1 | alien-npc | Mooglers | `frm_Travel2_vertical_image` (Gazillionaire.as:66025) |  |
 | MULLS.SWF | ![thumb](thumbnails/external-swf/mulls.swf.png) | 1 | alien-npc | Mulls | `frm_Travel2_vertical_image` (Gazillionaire.as:65339) |  |
@@ -227,38 +227,13 @@ Total external SWF files cataloged: **156**. Static (1 frame): **127**. Animated
 | WHITE_H.SWF | ![thumb](thumbnails/external-swf/white_h.swf.png) | 1 | gui | White (horizontal) | Gazillionaire.as:8075 |  |
 | WHITE_V.SWF | ![thumb](thumbnails/external-swf/white_v.swf.png) | 1 | gui | White V | Gazillionaire.as:7116 |  |
 
-## Environment (planet surface) (28)
+## Environment (planet surface) — consolidated
 
-| Filename | Thumbnail | Frame count | Category | Suggested name | Used at (Gazillionaire.as reference) | Notes |
-|---|---|---|---|---|---|---|
-| BASS.SWF | ![thumb](thumbnails/external-swf/bass.swf.png) | 1 | environment | Planet: Bass (surface art, level 1) | Gazillionaire.as:45245 | Duplicates content of `Gazillionaire_PlanetBass1Class` embedded in main SWF (asset-inventory.md). |
-| BASS2.SWF | ![thumb](thumbnails/external-swf/bass2.swf.png) | 1 | environment | Planet: Bass (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| FRAC.SWF | ![thumb](thumbnails/external-swf/frac.swf.png) | 1 | environment | Planet: Frac (surface art, level 1) | Gazillionaire.as:45247 | Duplicates content of `Gazillionaire_PlanetFrac1Class` embedded in main SWF (asset-inventory.md). |
-| FRAC2.SWF | ![thumb](thumbnails/external-swf/frac2.swf.png) | 1 | environment | Planet: Frac (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| HORK.SWF | ![thumb](thumbnails/external-swf/hork.swf.png) | 1 | environment | Planet: Hork (surface art, level 1) | Gazillionaire.as:45249 | Duplicates content of `Gazillionaire_PlanetHork1Class` embedded in main SWF (asset-inventory.md). |
-| HORK2.SWF | ![thumb](thumbnails/external-swf/hork2.swf.png) | 1 | environment | Planet: Hork (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| LORO.SWF | ![thumb](thumbnails/external-swf/loro.swf.png) | 1 | environment | Planet: Loro (surface art, level 1) | Gazillionaire.as:45251 | Duplicates content of `Gazillionaire_PlanetLoro1Class` embedded in main SWF (asset-inventory.md). |
-| LORO2.SWF | ![thumb](thumbnails/external-swf/loro2.swf.png) | 1 | environment | Planet: Loro (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| MIRA.SWF | ![thumb](thumbnails/external-swf/mira.swf.png) | 1 | environment | Planet: Mira (surface art, level 1) | Gazillionaire.as:45253 | Duplicates content of `Gazillionaire_PlanetMira1Class` embedded in main SWF (asset-inventory.md). |
-| MIRA2.SWF | ![thumb](thumbnails/external-swf/mira2.swf.png) | 1 | environment | Planet: Mira (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| NOSH.SWF | ![thumb](thumbnails/external-swf/nosh.swf.png) | 1 | environment | Planet: Nosh (surface art, level 1) | Gazillionaire.as:45255 | Duplicates content of `Gazillionaire_PlanetNosh1Class` embedded in main SWF (asset-inventory.md). |
-| NOSH2.SWF | ![thumb](thumbnails/external-swf/nosh2.swf.png) | 1 | environment | Planet: Nosh (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| OOOM.SWF | ![thumb](thumbnails/external-swf/ooom.swf.png) | 1 | environment | Planet: Ooom (surface art, level 1) | Gazillionaire.as:45257 | Duplicates content of `Gazillionaire_PlanetOoom1Class` embedded in main SWF (asset-inventory.md). |
-| OOOM2.SWF | ![thumb](thumbnails/external-swf/ooom2.swf.png) | 1 | environment | Planet: Ooom (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| PYKE.SWF | ![thumb](thumbnails/external-swf/pyke.swf.png) | 1 | environment | Planet: Pyke (surface art, level 1) | Gazillionaire.as:45259 | Duplicates content of `Gazillionaire_PlanetPyke1Class` embedded in main SWF (asset-inventory.md). |
-| PYKE2.SWF | ![thumb](thumbnails/external-swf/pyke2.swf.png) | 1 | environment | Planet: Pyke (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| QUEG.SWF | ![thumb](thumbnails/external-swf/queg.swf.png) | 1 | environment | Planet: Queg (surface art, level 1) | Gazillionaire.as:45261 | Duplicates content of `Gazillionaire_PlanetQueg1Class` embedded in main SWF (asset-inventory.md). |
-| QUEG2.SWF | ![thumb](thumbnails/external-swf/queg2.swf.png) | 1 | environment | Planet: Queg (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| STYE.SWF | ![thumb](thumbnails/external-swf/stye.swf.png) | 1 | environment | Planet: Stye (surface art, level 1) | Gazillionaire.as:45263 | Duplicates content of `Gazillionaire_PlanetStye1Class` embedded in main SWF (asset-inventory.md). |
-| STYE2.SWF | ![thumb](thumbnails/external-swf/stye2.swf.png) | 1 | environment | Planet: Stye (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| TILO.SWF | ![thumb](thumbnails/external-swf/tilo.swf.png) | 1 | environment | Planet: Tilo (surface art, level 1) | Gazillionaire.as:4714 | Duplicates content of `Gazillionaire_PlanetTilo1Class` (+ duplicate embed) in main SWF (asset-inventory.md). |
-| TILO2.SWF | ![thumb](thumbnails/external-swf/tilo2.swf.png) | 1 | environment | Planet: Tilo (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| VEXX.SWF | ![thumb](thumbnails/external-swf/vexx.swf.png) | 1 | environment | Planet: Vexx (surface art, level 1) | Gazillionaire.as:4726 | Duplicates content of `Gazillionaire_PlanetVexx1Class` embedded in main SWF (asset-inventory.md). |
-| VEXX2.SWF | ![thumb](thumbnails/external-swf/vexx2.swf.png) | 1 | environment | Planet: Vexx (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| XEEN.SWF | ![thumb](thumbnails/external-swf/xeen.swf.png) | 1 | environment | Planet: Xeen (surface art, level 1) | Gazillionaire.as:45269 | Duplicates content of `Gazillionaire_PlanetXeen1Class` embedded in main SWF (asset-inventory.md). |
-| XEEN2.SWF | ![thumb](thumbnails/external-swf/xeen2.swf.png) | 1 | environment | Planet: Xeen (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
-| ZILE.SWF | ![thumb](thumbnails/external-swf/zile.swf.png) | 1 | environment | Planet: Zile (surface art, level 1) | Gazillionaire.as:45271 | Duplicates content of `Gazillionaire_PlanetZile1Class` embedded in main SWF (asset-inventory.md). |
-| ZILE2.SWF | ![thumb](thumbnails/external-swf/zile2.swf.png) | 1 | environment | Planet: Zile (level-2 surface art) | `planet_image_swf()` dynamic path `"SWF/" + planetName + level` (Gazillionaire.as:50045-50098) — level-2 suffix, no literal string match |  |
+Planet assets consolidated — see [Planets](Asset-Wiki-Planets) /
+[planets-catalog.md](planets-catalog.md). All 28 rows previously here (14
+planets x level-1/level-2 surface SWFs) now live there, alongside each
+planet's main-SWF icon, dead-code level-3 PNG, and resources-folder
+duplicate.
 
 ## Background (2)
 

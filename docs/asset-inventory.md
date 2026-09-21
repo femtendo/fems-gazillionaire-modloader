@@ -19,12 +19,12 @@ what each embedded asset actually represents in-game.
 
 | Category | Rows | Files |
 |---|---|---|
-| `planet` | 16 | 32 (14 planet pairs + 2 duplicate Tilo/Vexx swf pairs) |
+| `planet` | 1 (pointer) | Consolidated — see [`asset-wiki/planets-catalog.md`](asset-wiki/planets-catalog.md) |
 | `gui-icon` | 34 | 34 standalone + 5 paired = see notes (29 standalone HUD icon classes + 5 tutorial-overlay swf pairs) |
 | `gui-chrome` | 33 | 26 standalone (win/mac/gripper) + 7 paired (b_x2/b_x3 button skins, fuel-gauge track skins) |
 | `background` | 2 | 2 paired (stars_main, stars_bg_main) |
 | `logo` | 1 | 1 (LoadScreen_LoadScreenGraphic) |
-| `other` | 8 | 8 (empty framework stub SpriteAssets — see Findings) |
+| `other` | 8 | 5 recovered cursor `BitmapAsset`s (was empty stubs, see Findings) + 3 remaining empty framework stub `SpriteAsset`s |
 | `character` | 0 | (see Findings — Boy/Girl icons folded into gui-icon, they are HUD passenger-count icons, not portraits) |
 | `alien` | 0 | none exist — verified, see Findings |
 | `ship` | 0 | none exist — verified, see Findings |
@@ -32,8 +32,10 @@ what each embedded asset actually represents in-game.
 | `font` | 0 | none found |
 | `localization` | 0 | (the `en_US$*_properties.as` files are localization resource bundles but carry no `[Embed]` — they are logic/data classes, excluded below) |
 
-Row total: 16 + 34 + 33 + 2 + 1 + 8 = **94** rows in the merged-pair scheme above; the
-detailed table below lists **98** rows (some categories above are grouped at summary
+Row total: 1 + 34 + 33 + 2 + 1 + 8 = **79** rows in the merged-pair scheme above
+(the 16 planet rows were consolidated into `asset-wiki/planets-catalog.md` and
+replaced with a single pointer row); the detailed table below lists the same
+pointer plus the remaining rows (some categories above are grouped at summary
 level; the table itself is the authoritative row-by-row breakdown).
 
 ## Findings for modloader coverage
@@ -77,19 +79,25 @@ level; the table itself is the authoritative row-by-row breakdown).
    *and* `Gazillionaire__embed_mxml_i_insure_no_png_1159808676` — the class names ARE
    descriptive here, so this is fine), but genuinely bare numeric-only entries are:
    `assets/127.bin` (`_class_embed_css_b_x2_up_swf_...`, name describes button-skin
-   role but not content — acceptable), and the true blind spots are the **8 empty
-   stub `SpriteAsset` classes** (`_class_embed_css_Assets_swf_976127064___brokenImage_658189327`,
-   the 5 `mx_skins_cursor_*` classes, `_class_embed_css_f_fillblue_png__944102544_696470983`,
+   role but not content — acceptable), and the true blind spots are the **3 remaining
+   empty stub `SpriteAsset` classes** (`_class_embed_css_Assets_swf_976127064___brokenImage_658189327`,
+   `_class_embed_css_f_fillblue_png__944102544_696470983`,
    `_class_embed_css_f_fillred_png_97191697_987149254`) — **these carry no `[Embed]` tag
    and have no corresponding file under `engine/src/assets/` at all**, even though
    `f_fillblue`/`f_fillred` ARE actively wired up as `upSkin`/`overSkin`/etc. on the
    fuel-gauge meter (CSS classes `fuelFillBlue`/`fuelFillRed`, `Gazillionaire.as`
-   ~line 76273-76315). **This is the most important coverage gap for the modloader:**
-   the fuel-gauge fill-color bar has no recoverable/overridable asset file for its
-   "filling" state — only its "empty"/"full"/"end" states have real embedded bytes.
-   The 5 cursor classes and the broken-image class are Flex framework defaults with
-   no unique game art, so they're low priority, but the fill-color bars are visible,
+   ~line 76273-76315). **This is the most important remaining coverage gap for the
+   modloader:** the fuel-gauge fill-color bar has no recoverable/overridable asset
+   file for its "filling" state — only its "empty"/"full"/"end" states have real
+   embedded bytes. The broken-image class is a genuine Flex framework default with
+   no unique game art, so it's low priority, but the fill-color bars are visible,
    real HUD art with no `assets/<file>` to hook.
+
+   The 5 `mx_skins_cursor_*` classes were investigated separately and turned out
+   **not** to be empty framework defaults — they carry real, recoverable drag-cursor
+   art from the original SWF and have since been re-wired to real `BitmapAsset`
+   embeds. See `known-issues.md` ("Correction: the 5 cursor classes were NOT
+   vestigial") and the `other`-category rows below.
 
 6. **Symbol-inside-shared-SWF case:** none of the game's own asset classes wrap a
    symbol pulled from a *shared* SWF library (each `[Embed]` targets its own
@@ -108,22 +116,7 @@ level; the table itself is the authoritative row-by-row breakdown).
 
 | Asset ID | Thumbnail | Class name(s) (.as file) | Asset file | Type | Category | Suggested wiki name | Notes |
 |---|---|---|---|---|---|---|---|
-| 173 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/173_Gazillionaire_PlanetMira1Class_dataClass.png) | `Gazillionaire_PlanetMira1Class.as` (+ `_dataClass.as`) | `assets/173_Gazillionaire_PlanetMira1Class_dataClass.bin` | swf (as .bin) | planet | Planet: Mira | GameStrings `planet_2`="Mira", capital of Kukubian religion |
-| 171 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/171_Gazillionaire_PlanetPyke1Class_dataClass.png) | `Gazillionaire_PlanetPyke1Class.as` (+ `_dataClass.as`) | `assets/171_Gazillionaire_PlanetPyke1Class_dataClass.bin` | swf (as .bin) | planet | Planet: Pyke | `planet_1`="Pyke", L-Tech engine manufacturer world |
-| 105 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/105_Gazillionaire_PlanetStye1Class_dataClass.png) | `Gazillionaire_PlanetStye1Class.as` (+ `_dataClass.as`) | `assets/105_Gazillionaire_PlanetStye1Class_dataClass.bin` | swf (as .bin) | planet | Planet: Stye | `planet_3`="Stye", financial hub / Traders' Union |
-| 88 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/88_Gazillionaire_PlanetLoro1Class_dataClass.png) | `Gazillionaire_PlanetLoro1Class.as` (+ `_dataClass.as`) | `assets/88_Gazillionaire_PlanetLoro1Class_dataClass.bin` | swf (as .bin) | planet | Planet: Loro | `planet_4`="Loro", vacation/pleasure planet |
-| 92 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/92_Gazillionaire_PlanetZile1Class_dataClass.png) | `Gazillionaire_PlanetZile1Class.as` (+ `_dataClass.as`) | `assets/92_Gazillionaire_PlanetZile1Class_dataClass.bin` | swf (as .bin) | planet | Planet: Zile | `planet_5`="Zile", Mr. Zinn's home planet |
-| 133 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/133_Gazillionaire_PlanetFrac1Class_dataClass.png) | `Gazillionaire_PlanetFrac1Class.as` (+ `_dataClass.as`) | `assets/133_Gazillionaire_PlanetFrac1Class_dataClass.bin` | swf (as .bin) | planet | Planet: Frac | `planet_6`="Frac", Voyager's Insurance HQ |
-| 148 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/148.png) | `Gazillionaire_PlanetTilo1Class.as` (+ `_dataClass.as`) | `assets/148.bin` | swf (as .bin) | planet | Planet: Tilo | `planet_7`="Tilo", gambler's planet. **Shares file with `Gazillionaire__embed_mxml_TILO1_SWF_1460587624` below (finding 4).** |
-| 125 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/125_Gazillionaire_PlanetQueg1Class_dataClass.png) | `Gazillionaire_PlanetQueg1Class.as` (+ `_dataClass.as`) | `assets/125_Gazillionaire_PlanetQueg1Class_dataClass.bin` | swf (as .bin) | planet | Planet: Queg | `planet_8`="Queg", smuggler's haven |
-| 138 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/138_Gazillionaire_PlanetXeen1Class_dataClass.png) | `Gazillionaire_PlanetXeen1Class.as` (+ `_dataClass.as`) | `assets/138_Gazillionaire_PlanetXeen1Class_dataClass.bin` | swf (as .bin) | planet | Planet: Xeen | `planet_9`="Xeen", junkyard/mechanic's planet |
-| 110 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/110_Gazillionaire_PlanetOoom1Class_dataClass.png) | `Gazillionaire_PlanetOoom1Class.as` (+ `_dataClass.as`) | `assets/110_Gazillionaire_PlanetOoom1Class_dataClass.bin` | swf (as .bin) | planet | Planet: Ooom | `planet_10`="Ooom", fortune-teller's planet |
-| 115 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/115_Gazillionaire_PlanetHork1Class_dataClass.png) | `Gazillionaire_PlanetHork1Class.as` (+ `_dataClass.as`) | `assets/115_Gazillionaire_PlanetHork1Class_dataClass.bin` | swf (as .bin) | planet | Planet: Hork | `planet_11`="Hork", media capital |
-| 85 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/85_Gazillionaire_PlanetBass1Class_dataClass.png) | `Gazillionaire_PlanetBass1Class.as` (+ `_dataClass.as`) | `assets/85_Gazillionaire_PlanetBass1Class_dataClass.bin` | swf (as .bin) | planet | Planet: Bass | `planet_12`="Bass", stock-analyst playground |
-| 166 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/166_Gazillionaire_PlanetNosh1Class_dataClass.png) | `Gazillionaire_PlanetNosh1Class.as` (+ `_dataClass.as`) | `assets/166_Gazillionaire_PlanetNosh1Class_dataClass.bin` | swf (as .bin) | planet | Planet: Nosh | `planet_13`="Nosh", fuel depot planet |
-| 139 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/139.png) | `Gazillionaire_PlanetVexx1Class.as` (+ `_dataClass.as`) | `assets/139.bin` | swf (as .bin) | planet | Planet: Vexx | `planet_0`="Vexx", capital/Imperial Magistrate. **Shares file with `Gazillionaire__embed_mxml_VEXX1_SWF_1452207462` below (finding 4).** |
-| 148 (dup) | ![thumb](asset-wiki/thumbnails/main-swf-embeds/148.png) | `Gazillionaire__embed_mxml_TILO1_SWF_1460587624.as` (+ `_dataClass.as`) | `assets/148.bin` | swf (as .bin) | planet | Planet: Tilo (duplicate wrapper) | Identical bytes to `Gazillionaire_PlanetTilo1Class` above — decompiler duplicate, see finding 4 |
-| 139 (dup) | ![thumb](asset-wiki/thumbnails/main-swf-embeds/139.png) | `Gazillionaire__embed_mxml_VEXX1_SWF_1452207462.as` (+ `_dataClass.as`) | `assets/139.bin` | swf (as .bin) | planet | Planet: Vexx (duplicate wrapper) | Identical bytes to `Gazillionaire_PlanetVexx1Class` above — decompiler duplicate, see finding 4 |
+| n/a | — | *(planet icon classes)* | — | — | planet | Planet assets consolidated — see [Planets](Asset-Wiki-Planets) / [planets-catalog.md](asset-wiki/planets-catalog.md) | All 14 `Gazillionaire_Planet<Name>1Class` icon rows (plus the Tilo/Vexx duplicate wrapper rows) moved to the consolidated planets catalog, alongside each planet's level-2/level-3/resources-folder assets. |
 | 158 | ![thumb](../engine/src/assets/158_Gazillionaire__embed_mxml_i_money_png_204001112.png) | `Gazillionaire__embed_mxml_i_money_png_204001112.as` | `assets/158_Gazillionaire__embed_mxml_i_money_png_204001112.png` | png | gui-icon | HUD icon: Cash/Money | Used on `frm_MainMenu` icon bar |
 | 163 | ![thumb](../engine/src/assets/163_Gazillionaire__embed_mxml_i_fuel_png_1476944570.png) | `Gazillionaire__embed_mxml_i_fuel_png_1476944570.as` | `assets/163_Gazillionaire__embed_mxml_i_fuel_png_1476944570.png` | png | gui-icon | HUD icon: Fuel | `frm_MainMenu_image_fuel` |
 | 169 | ![thumb](../engine/src/assets/169_Gazillionaire__embed_mxml_i_bank_png_875063226.png) | `Gazillionaire__embed_mxml_i_bank_png_875063226.as` | `assets/169_Gazillionaire__embed_mxml_i_bank_png_875063226.png` | png | gui-icon | HUD icon: Bank | `frm_MainMenu` icon bar |
@@ -199,11 +192,11 @@ level; the table itself is the authoritative row-by-row breakdown).
 | 153 | ![thumb](../engine/src/assets/153__class_embed_css_win_restore_up_png_1550027320_1865955528.png) | `_class_embed_css_win_restore_up_png_1550027320_1865955528.as` | `assets/153__class_embed_css_win_restore_up_png_1550027320_1865955528.png` | png | gui-chrome | Windows Window Restore Button — Up | AIR native window chrome (Win skin) |
 | 1 | ![thumb](asset-wiki/thumbnails/main-swf-embeds/1_LoadScreen_LoadScreenGraphic.png) | `LoadScreen_LoadScreenGraphic.as` | `assets/1_LoadScreen_LoadScreenGraphic.bin` | bin (bitmap data) | logo | Loading Screen Graphic | Branding asset shown during game load, before `CustomPreloader` finishes |
 | n/a | *(no asset file)* | `_class_embed_css_Assets_swf_976127064___brokenImage_658189327.as` | *(none — no `[Embed]` tag)* | n/a | other | Flex Default: Broken-Image Placeholder | Empty `SpriteAsset` stub, no unique data recovered — Flex framework default, not custom game art |
-| n/a | *(no asset file)* | `_class_embed_css_Assets_swf_976127064_mx_skins_cursor_BusyCursor_487872263.as` | *(none)* | n/a | other | Flex Default: Busy Cursor | Empty stub, Flex framework default cursor |
-| n/a | *(no asset file)* | `_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragCopy_806051697.as` | *(none)* | n/a | other | Flex Default: Drag-Copy Cursor | Empty stub, Flex framework default cursor |
-| n/a | *(no asset file)* | `_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragLink_806313702.as` | *(none)* | n/a | other | Flex Default: Drag-Link Cursor | Empty stub, Flex framework default cursor |
-| n/a | *(no asset file)* | `_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragMove_806339277.as` | *(none)* | n/a | other | Flex Default: Drag-Move Cursor | Empty stub, Flex framework default cursor |
-| n/a | *(no asset file)* | `_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragReject_681200837.as` | *(none)* | n/a | other | Flex Default: Drag-Reject Cursor | Empty stub, Flex framework default cursor |
+| 47 | ![thumb](../engine/src/assets/47_class_embed_css_Assets_swf_976127064_mx_skins_cursor_BusyCursor_487872263.png) | `_class_embed_css_Assets_swf_976127064_mx_skins_cursor_BusyCursor_487872263.as` | `assets/47_class_embed_css_Assets_swf_976127064_mx_skins_cursor_BusyCursor_487872263.png` | png | other | Busy Cursor — Background Halo | **Recovered from original SWF** (see `known-issues.md`) — concentric-ring halo drawn behind the framework's spinning `mx.skins.halo.BusyCursor`; wired as `busyCursorBackground` |
+| 22 | ![thumb](../engine/src/assets/22_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragCopy_806051697.png) | `_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragCopy_806051697.as` | `assets/22_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragCopy_806051697.png` | png | other | Drag-Copy Cursor | **Recovered from original SWF** — real arrow+green-plus badge art, shown while drag-copying cargo; was wrongly documented as vestigial, see `known-issues.md` |
+| 28 | ![thumb](../engine/src/assets/28_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragLink_806313702.png) | `_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragLink_806313702.as` | `assets/28_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragLink_806313702.png` | png | other | Drag-Link Cursor | **Recovered from original SWF** — real arrow+gray-badge art; was wrongly documented as vestigial, see `known-issues.md` |
+| 34 | ![thumb](../engine/src/assets/34_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragMove_806339277.png) | `_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragMove_806339277.as` | `assets/34_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragMove_806339277.png` | png | other | Drag-Move Cursor | **Recovered from original SWF** — plain arrow glyph, no badge (matches Flex's own move-cursor design); was wrongly documented as vestigial, see `known-issues.md` |
+| 33 | ![thumb](../engine/src/assets/33_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragReject_681200837.png) | `_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragReject_681200837.as` | `assets/33_class_embed_css_Assets_swf_976127064_mx_skins_cursor_DragReject_681200837.png` | png | other | Drag-Reject Cursor | **Recovered from original SWF** — real arrow+red-badge "no" art; was wrongly documented as vestigial, see `known-issues.md` |
 | n/a | *(no asset file)* | `_class_embed_css_f_fillblue_png__944102544_696470983.as` | *(none — no `[Embed]` tag, no file recovered)* | n/a | other | **[GAP] Fuel Gauge — Blue fill bar** | **Actively used** as `upSkin`/`overSkin`/`downSkin`/`disabledSkin` for CSS class `fuelFillBlue` (`Gazillionaire.as` ~line 76315), but no asset bytes exist to override — see finding 5 |
 | n/a | *(no asset file)* | `_class_embed_css_f_fillred_png_97191697_987149254.as` | *(none — no `[Embed]` tag, no file recovered)* | n/a | other | **[GAP] Fuel Gauge — Red fill bar** | **Actively used** as `upSkin`/`overSkin`/`downSkin`/`disabledSkin` for CSS class `fuelFillRed` (`Gazillionaire.as` ~line 76285), but no asset bytes exist to override — see finding 5 |
 
