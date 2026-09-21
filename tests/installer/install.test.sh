@@ -94,6 +94,23 @@ bash "$FIXTURE_ROOT/tools/installer/install.sh" restore --target "$FAKE_ORIGINAL
 check "$(cat "$RESOURCES_DIR/SWF/SHIP1.SWF")" "original ship art" "loose asset restored"
 check "$(test -e "$RESOURCES_DIR/SWF/SHIP1.SWF.original-backup" && echo yes || echo no)" "no" "loose asset backup removed after restore"
 
+# 6. A stale loose-asset backup makes install_loose_assets exit 1 inside its
+#    piped `while read` loop. That loop is the last stage of the pipeline,
+#    so under `set -o pipefail` its exit status becomes the pipeline's exit
+#    status, which in turn aborts the whole script (set -e) rather than
+#    being silently swallowed by the subshell the pipe runs the loop in.
+#    Lock in both halves of that: the script must exit non-zero, and the
+#    live loose-asset file (and the stale backup) must be left untouched.
+echo "stale backup content" > "$RESOURCES_DIR/SWF/SHIP1.SWF.original-backup"
+if bash "$FIXTURE_ROOT/tools/installer/install.sh" install --target "$FAKE_ORIGINAL" 2>/dev/null; then
+    echo "FAIL: install should refuse when a stale loose-asset backup already exists" >&2
+    fail=$((fail + 1))
+else
+    pass=$((pass + 1))
+fi
+check "$(cat "$RESOURCES_DIR/SWF/SHIP1.SWF")" "original ship art" "loose asset untouched when stale backup blocks install"
+check "$(cat "$RESOURCES_DIR/SWF/SHIP1.SWF.original-backup")" "stale backup content" "stale loose-asset backup left untouched"
+
 echo ""
 echo "install.test.sh: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
