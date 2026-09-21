@@ -133,4 +133,64 @@ function readSwfStageInfo(swfPath, ffdecJarPath) {
     };
 }
 
-module.exports = { readPngDimensions, readGifMeta, readSwfStageInfo };
+function isGif(buffer) {
+    const sig = buffer.toString('ascii', 0, 6);
+    return sig === 'GIF89a' || sig === 'GIF87a';
+}
+
+// Resizes+pads (never crops/distorts — preserves aspect ratio, transparent
+// pad) a single PNG to exactly targetWidthPx x targetHeightPx using
+// ffmpeg's scale+pad filters.
+function autoFitPng(srcPath, destPath, targetWidthPx, targetHeightPx) {
+    const filter = `scale=${targetWidthPx}:${targetHeightPx}:force_original_aspect_ratio=decrease,` +
+        `pad=${targetWidthPx}:${targetHeightPx}:(ow-iw)/2:(oh-ih)/2:color=0x00000000`;
+    execFileSync('ffmpeg', ['-y', '-i', srcPath, '-vf', filter, destPath], { stdio: 'pipe' });
+}
+
+function prepareFrames(inputPath, targetWidthPx, targetHeightPx, targetFrameRate, workDir) {
+    const inputBuffer = fs.readFileSync(inputPath);
+
+    if (!isGif(inputBuffer)) {
+        // Static PNG: one auto-fit frame, always loop-forever (nothing to
+        // stop — a single-frame timeline has nothing to loop back from
+        // anyway, this flag only changes behavior once there's >1 frame).
+        const outPath = path.join(workDir, 'frame_static.png');
+        autoFitPng(inputPath, outPath, targetWidthPx, targetHeightPx);
+        return { framePaths: [outPath], loopForever: true };
+    }
+
+    const { loopCount, frameDelaysCs } = readGifMeta(inputBuffer);
+
+    // Extract raw decoded frames from the GIF via ffmpeg (one PNG per
+    // GIF frame, in order, ignoring GIF's own delay timing at this step —
+    // we apply timing ourselves below using readGifMeta's parsed delays,
+    // since ffmpeg's own frame count can differ slightly from the GIF's
+    // declared frame count on some malformed inputs and we want the
+    // delay array and frame array to line up exactly).
+    const rawDir = path.join(workDir, 'raw-gif-frames');
+    fs.mkdirSync(rawDir, { recursive: true });
+    execFileSync('ffmpeg', ['-y', '-i', inputPath, path.join(rawDir, 'raw_%04d.png')], { stdio: 'pipe' });
+    const rawFrameFiles = fs.readdirSync(rawDir).filter((f) => f.startsWith('raw_')).sort();
+
+    if (rawFrameFiles.length !== frameDelaysCs.length) {
+        throw new Error(
+            `GIF frame-count mismatch: ffmpeg decoded ${rawFrameFiles.length} frames but the GIF's own ` +
+            `Graphic Control Extensions describe ${frameDelaysCs.length} — refusing to guess a mapping. ` +
+            `Re-export the GIF with a standard encoder if this persists.`
+        );
+    }
+
+    const framePaths = [];
+    const msPerOutputFrame = 1000 / targetFrameRate;
+    rawFrameFiles.forEach((rawFile, idx) => {
+        const fitted = path.join(workDir, `frame_gif_${String(idx).padStart(4, '0')}.png`);
+        autoFitPng(path.join(rawDir, rawFile), fitted, targetWidthPx, targetHeightPx);
+        const delayMs = frameDelaysCs[idx] * 10;
+        const repeatCount = Math.max(1, Math.round(delayMs / msPerOutputFrame));
+        for (let r = 0; r < repeatCount; r++) framePaths.push(fitted);
+    });
+
+    return { framePaths, loopForever: loopCount === 0 };
+}
+
+module.exports = { readPngDimensions, readGifMeta, readSwfStageInfo, prepareFrames };

@@ -160,4 +160,37 @@ if (fsMod.existsSync(FFDEC_JAR)) {
     console.log('readSwfStageInfo: skipped (ffdec not installed on this machine)');
 }
 
+const { prepareFrames } = require('../../tools/modloader/loose-assets');
+const osMod = require('os');
+const { execFileSync } = require('child_process');
+
+{
+    const workDir = fsMod.mkdtempSync(pathMod.join(osMod.tmpdir(), 'loose-assets-test-'));
+    const pngPath = pathMod.join(workDir, 'in.png');
+    // A real 1x1 PNG (minimal valid encoding, magic bytes + IHDR + IDAT + IEND)
+    // is required here since prepareFrames actually shells out to ffmpeg to
+    // resize it — reuse a tiny known-good 1x1 white PNG byte literal.
+    // (Note: the byte literal originally drafted for this fixture had a
+    // corrupt zlib/Adler32 checksum in its IDAT chunk that ffmpeg's PNG
+    // decoder correctly rejects — this is a freshly-generated valid 1x1
+    // RGBA PNG with the same shape/intent.)
+    const onePixelPng = Buffer.from(
+        '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63f8ffffff7f0009fb03fd2a86e38a' +
+        '0000000049454e44ae426082', 'hex'
+    );
+    fsMod.writeFileSync(pngPath, onePixelPng);
+
+    if (fsMod.existsSync('/opt/homebrew/bin/ffmpeg') || (() => { try { execFileSync('which', ['ffmpeg']); return true; } catch { return false; } })()) {
+        const { framePaths, loopForever } = prepareFrames(pngPath, 320, 200, 12, workDir);
+        assert.strictEqual(framePaths.length, 1, 'a static PNG produces exactly one output frame');
+        assert.strictEqual(loopForever, true, 'a static single-frame image is treated as loop-forever');
+        const dims = readPngDimensions(fsMod.readFileSync(framePaths[0]));
+        assert.strictEqual(dims.width, 320);
+        assert.strictEqual(dims.height, 200);
+        console.log('prepareFrames (static PNG): passed');
+    } else {
+        console.log('prepareFrames: skipped (ffmpeg not installed on this machine)');
+    }
+}
+
 console.log('loose-assets.test.js: all assertions passed');
