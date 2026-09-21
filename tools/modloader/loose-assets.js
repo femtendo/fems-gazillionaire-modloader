@@ -27,14 +27,33 @@ function readGifMeta(buffer) {
     if (buffer.toString('ascii', 0, 6) !== 'GIF89a' && buffer.toString('ascii', 0, 6) !== 'GIF87a') {
         throw new Error('Not a valid GIF (missing GIF87a/GIF89a signature)');
     }
+    if (buffer.length < 13) {
+        throw new Error('Malformed GIF: truncated header');
+    }
     let loopCount = null;
     const frameDelaysCs = [];
-    let i = 6 + 7; // signature + logical screen descriptor (fixed 7 bytes, no global color table support needed for this parser's purpose)
+    let i = 6 + 7; // signature + logical screen descriptor (fixed 7 bytes)
+
+    // Account for Global Color Table (GCT) if present. The packed fields byte
+    // (at buffer[10]) bit 7 indicates GCT presence; if set, GCT size is
+    // 2 << (packed & 0x07) entries, each 3 bytes (RGB).
+    const packedByte = buffer[10];
+    if ((packedByte & 0x80) !== 0) {
+        const gctSize = 2 << (packedByte & 0x07);
+        i += gctSize * 3;
+    }
+
     let pendingDelay = 10; // GIF default when no Graphic Control Extension precedes a frame
 
     function skipSubBlocks(pos) {
-        while (buffer[pos] !== 0x00) {
+        while (pos < buffer.length && buffer[pos] !== 0x00) {
+            if (pos + 1 > buffer.length) {
+                throw new Error('Malformed GIF: truncated block data');
+            }
             pos += 1 + buffer[pos];
+        }
+        if (pos >= buffer.length) {
+            throw new Error('Malformed GIF: truncated block data');
         }
         return pos + 1;
     }
@@ -42,19 +61,31 @@ function readGifMeta(buffer) {
     while (i < buffer.length) {
         const marker = buffer[i];
         if (marker === 0x21) { // Extension
+            if (i + 1 >= buffer.length) {
+                throw new Error('Malformed GIF: truncated extension block');
+            }
             const label = buffer[i + 1];
-            if (label === 0xff && buffer.toString('ascii', i + 3, i + 14) === 'NETSCAPE2.0') {
+            if (label === 0xff && i + 14 <= buffer.length && buffer.toString('ascii', i + 3, i + 14) === 'NETSCAPE2.0') {
                 // block: 0x21 0xff 0x0b "NETSCAPE2.0" 0x03 0x01 <loop-lo> <loop-hi> 0x00
+                if (i + 18 >= buffer.length) {
+                    throw new Error('Malformed GIF: truncated extension block');
+                }
                 loopCount = buffer.readUInt16LE(i + 16);
                 i = i + 19;
             } else if (label === 0xf9) {
                 // Graphic Control Extension: 0x21 0xf9 0x04 <flags> <delay-lo> <delay-hi> <transparent> 0x00
+                if (i + 8 > buffer.length) {
+                    throw new Error('Malformed GIF: truncated extension block');
+                }
                 pendingDelay = buffer.readUInt16LE(i + 4);
                 i = i + 8;
             } else {
                 i = skipSubBlocks(i + 2);
             }
         } else if (marker === 0x2c) { // Image Descriptor -> a real frame
+            if (i + 10 >= buffer.length) {
+                throw new Error('Malformed GIF: truncated image descriptor');
+            }
             frameDelaysCs.push(pendingDelay);
             pendingDelay = 10;
             const hasLocalColorTable = (buffer[i + 9] & 0x80) !== 0;
@@ -64,6 +95,9 @@ function readGifMeta(buffer) {
                 pos += tableSize * 3;
             }
             pos += 1; // LZW minimum code size byte
+            if (pos > buffer.length) {
+                throw new Error('Malformed GIF: truncated block data');
+            }
             i = skipSubBlocks(pos);
         } else if (marker === 0x3b) { // Trailer
             break;
