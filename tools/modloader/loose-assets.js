@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const zlib = require('zlib');
 const { execFileSync } = require('child_process');
 
 // PNG width/height are fixed-offset big-endian uint32s right after the
@@ -193,4 +194,133 @@ function prepareFrames(inputPath, targetWidthPx, targetHeightPx, targetFrameRate
     return { framePaths, loopForever: loopCount === 0 };
 }
 
-module.exports = { readPngDimensions, readGifMeta, readSwfStageInfo, prepareFrames };
+// Re-encodes a PNG to raw ARGB (top-down, row-major, 4 bytes/pixel: A,R,G,B)
+// via ffmpeg, matching exactly what SWF's DefineBitsLossless bitmapFormat=5
+// (32-bit ARGB) expects once zlib-deflated — this was cross-checked against
+// a real ffdec-produced DefineBitsLosslessTag (see task-4-report.md).
+function pngToArgb(pngPath) {
+    const rawPath = pngPath + '.rgba';
+    execFileSync('ffmpeg', ['-y', '-i', pngPath, '-pix_fmt', 'argb', '-f', 'rawvideo', rawPath], { stdio: 'pipe' });
+    return fs.readFileSync(rawPath);
+}
+
+// Minimum bit width (SWF-spec "Nbits"/"NumBits" style: enough bits for a
+// signed two's-complement value up to maxAbsValue, plus a 2-bit safety
+// margin) needed to declare a coordinate/fixed-point field in ffdec's
+// -xml2swf XML. Verified this session that ffdec recomputes the *actual*
+// packed bit width itself at write time (an under-sized declared value
+// still round-tripped correctly in testing), but real ffdec-emitted XML
+// always declares a correctly-sized value, so we do too rather than
+// relying on that leniency.
+function bitsNeeded(maxAbsValue) {
+    return Math.max(1, Math.floor(Math.log2(Math.max(1, maxAbsValue))) + 2);
+}
+
+// Builds a minimal N-frame SWF that shows framePaths[i] as a full-stage
+// bitmap on output frame i, looping according to loopForever.
+//
+// Schema note (re-verified against a live `ffdec -swf2xml`/`-xml2swf` run
+// this session — see task-4-report.md for the full transcript): a bare
+// DefineBitsLosslessTag placed directly via PlaceObject2 does NOT render
+// (confirmed by exporting frames from such a file: both came out as flat
+// background color). Real ffdec-authored SWFs in this repo's own assets
+// never place a bitmap character directly — they always wrap it as a
+// bitmap fill inside a DefineShapeTag, then place *that* shape. We do the
+// same: one DefineBitsLosslessTag + one DefineShapeTag (single rectangular
+// fill covering the full stage, bitmapFillType 67 = clipped/non-smoothed)
+// + one PlaceObject2Tag per output frame, followed by a ShowFrameTag, with
+// characterIDs incrementing per frame so each frame swaps in fresh bitmap
+// data at the same depth (placeFlagMove=true from the second frame on).
+//
+// Confirmed real attribute names (differ from earlier unverified notes):
+// tag is "DefineBitsLosslessTag" (not "...Lossless2Tag") even for
+// bitmapFormat="5" (32-bit ARGB); its character-id attribute is
+// "characterID" (capital ID), while PlaceObject2Tag's is "characterId"
+// (lowercase id) — these are NOT the same casing, easy to typo. Bitmap
+// bytes are lower-case hex in "zlibBitmapData", not base64.
+function buildFlipbookSwf(framePaths, widthPx, heightPx, frameRate, loopForever, outSwfPath, ffdecJarPath) {
+    const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flipbook-build-'));
+    const seedXml = path.join(workDir, 'seed.xml');
+
+    const wt = widthPx * 20; // SWF twips: 1px = 20 twips
+    const ht = heightPx * 20;
+    const rectBits = bitsNeeded(Math.max(wt, ht));
+    const edgeBits = bitsNeeded(Math.max(wt, ht));
+    const scaleFixed = Math.round(20 * 65536); // 20.0 as a 16.16 fixed-point value
+    const scaleBits = bitsNeeded(scaleFixed);
+
+    const tagItems = [];
+    tagItems.push(
+        '<item type="FileAttributesTag" actionScript3="true" forceWriteAsLong="false" hasMetadata="false" ' +
+        'noCrossDomainCache="false" reservedA="false" reservedB="0" swfRelativeUrls="false" useDirectBlit="false" ' +
+        'useGPU="false" useNetwork="false"/>'
+    );
+    tagItems.push(
+        '<item type="SetBackgroundColorTag" forceWriteAsLong="false">' +
+        '<backgroundColor type="RGB" blue="0" green="0" red="0"/></item>'
+    );
+
+    framePaths.forEach((framePath, idx) => {
+        const bitmapId = idx * 2 + 1;
+        const shapeId = idx * 2 + 2;
+        const argb = pngToArgb(framePath);
+        const zlibHex = zlib.deflateSync(argb).toString('hex');
+
+        tagItems.push(
+            `<item type="DefineBitsLosslessTag" bitmapFormat="5" bitmapHeight="${heightPx}" ` +
+            `bitmapWidth="${widthPx}" characterID="${bitmapId}" forceWriteAsLong="true" ` +
+            `zlibBitmapData="${zlibHex}"/>`
+        );
+        tagItems.push(
+            `<item type="DefineShapeTag" forceWriteAsLong="true" shapeId="${shapeId}">` +
+            `<shapeBounds type="RECT" Xmax="${wt}" Xmin="0" Ymax="${ht}" Ymin="0" nbits="${rectBits}"/>` +
+            '<shapes type="SHAPEWITHSTYLE" numFillBits="1" numLineBits="0">' +
+            '<fillStyles type="FILLSTYLEARRAY"><fillStyles>' +
+            `<item type="FILLSTYLE" bitmapId="${bitmapId}" fillStyleType="67">` +
+            `<bitmapMatrix type="MATRIX" hasRotate="false" hasScale="true" nScaleBits="${scaleBits}" ` +
+            'nTranslateBits="0" scaleX="20.0" scaleY="20.0" translateX="0" translateY="0"/>' +
+            '</item></fillStyles></fillStyles>' +
+            '<lineStyles type="LINESTYLEARRAY"><lineStyles/></lineStyles>' +
+            '<shapeRecords>' +
+            '<item type="StyleChangeRecord" fillStyle0="1" moveBits="1" moveDeltaX="0" moveDeltaY="0" ' +
+            'stateFillStyle0="true" stateFillStyle1="false" stateLineStyle="false" stateMoveTo="true" ' +
+            'stateNewStyles="false"/>' +
+            `<item type="StraightEdgeRecord" deltaX="${wt}" generalLineFlag="false" numBits="${edgeBits}" vertLineFlag="false"/>` +
+            `<item type="StraightEdgeRecord" deltaY="${ht}" generalLineFlag="false" numBits="${edgeBits}" vertLineFlag="true"/>` +
+            `<item type="StraightEdgeRecord" deltaX="${-wt}" generalLineFlag="false" numBits="${edgeBits}" vertLineFlag="false"/>` +
+            `<item type="StraightEdgeRecord" deltaY="${-ht}" generalLineFlag="false" numBits="${edgeBits}" vertLineFlag="true"/>` +
+            '<item type="EndShapeRecord" endOfShape="0"/>' +
+            '</shapeRecords></shapes></item>'
+        );
+        tagItems.push(
+            `<item type="PlaceObject2Tag" characterId="${shapeId}" depth="1" forceWriteAsLong="false" ` +
+            'placeFlagHasCharacter="true" placeFlagHasClipActions="false" placeFlagHasClipDepth="false" ' +
+            'placeFlagHasColorTransform="false" placeFlagHasMatrix="true" placeFlagHasName="false" ' +
+            `placeFlagHasRatio="false" placeFlagMove="${idx > 0}">` +
+            '<matrix type="MATRIX" hasRotate="false" hasScale="false" nRotateBits="0" nScaleBits="0" ' +
+            'nTranslateBits="0" translateX="0" translateY="0"/></item>'
+        );
+        tagItems.push('<item type="ShowFrameTag" forceWriteAsLong="false"/>');
+    });
+
+    // ActionStop (opcode 0x07) + ActionEnd (0x00) as raw AS1/2 bytecode —
+    // DoActionTag's real field is "actionBytes" (raw hex), not a structured
+    // "actions" list (confirmed via javap on ffdec_lib.jar's DoActionTag
+    // class this session, then round-tripped through -swf2xml to verify).
+    if (!loopForever) {
+        tagItems.push('<item type="DoActionTag" actionBytes="0700" forceWriteAsLong="false"/>');
+    }
+
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>' +
+        `<swf _xmlExportMajor="2" _xmlExportMinor="2" type="SWF" charset="UTF-8" compression="NONE" ` +
+        `encrypted="false" frameCount="${framePaths.length}" frameRate="${frameRate}" gfx="false" ` +
+        'hasEndTag="true" version="9">' +
+        `<displayRect type="RECT" Xmax="${wt}" Xmin="0" Ymax="${ht}" Ymin="0" nbits="${rectBits}"/>` +
+        `<tags>${tagItems.join('')}</tags></swf>`;
+    fs.writeFileSync(seedXml, xml);
+
+    execFileSync('java', ['-jar', ffdecJarPath, '-xml2swf', seedXml, outSwfPath], { stdio: 'pipe' });
+    fs.rmSync(workDir, { recursive: true, force: true });
+}
+
+module.exports = { readPngDimensions, readGifMeta, readSwfStageInfo, prepareFrames, buildFlipbookSwf };
