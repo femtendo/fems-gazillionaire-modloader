@@ -981,7 +981,12 @@ package
       private var _123009624frm_HowManyPlayers_6:Button;
       
       private var _974553035frm_HowManyPlayers_text:Text;
-      
+
+      // Play Online corner trigger, scoped to frm_HowManyPlayers only -
+      // multiplayer games are only startable/joinable from there. Added/
+      // removed in __frm_HowManyPlayers_show/_hide.
+      private var networkTrigger:Sprite;
+
       private var _1315171954frm_Init:Canvas;
       
       private var _660366934frm_Init_copyright:Label;
@@ -50731,10 +50736,25 @@ package
       
       internal function frm_ChooseShip3_continue() : void
       {
+         if(NetworkClient.instance.isNetworked && !NetworkClient.instance.isHost)
+         {
+            // Guest just finished picking their own ship/company name;
+            // hand the result to the host and wait for the next player.
+            // Mirrors the same top-of-function guard in frm_Travel3_load().
+            NetworkClient.instance.publishTurn(this.g.serialize());
+            this.frm_Travel3_networkWait();
+            return;
+         }
          ++this.g.player;
          if(this.g.player < this.g.playerNumberOf)
          {
-            if(this.buildLevel == 1 && this.userShipNumber >= 0 && this.g.game > 0)
+            if(NetworkClient.instance.isNetworked && NetworkClient.instance.mySlots.indexOf(this.g.player) < 0)
+            {
+               // Next player's slot belongs to a remote guest, not us.
+               NetworkClient.instance.publishTurn(this.g.serialize());
+               this.frm_Travel3_networkWait();
+            }
+            else if(this.buildLevel == 1 && this.userShipNumber >= 0 && this.g.game > 0)
             {
                this.showHelpNew(this.currentStrings.getString("frm_ChooseShip3_please_wait_for_others_to_select"),"","","","",280);
                this.mainCanvas.selectedChild = this.frm_NewOrContinue;
@@ -67214,9 +67234,33 @@ package
       internal function frm_Travel3_onNetworkStateReceived(param1:NetworkEvent) : void
       {
          this.g.deserialize(param1.state);
+         // g.playerTurnCounter stays at its game-init value of 0 for the
+         // entire ship-selection/company-naming setup phase (only
+         // frm_Travel3_load() ever changes it, and that never runs until
+         // setup is done) - a free, already-existing signal for which
+         // dispatcher to resume, no new protocol field needed.
          if(NetworkClient.instance.isHost)
          {
-            this.frm_Travel3_load();
+            if(this.g.playerTurnCounter == 0)
+            {
+               this.frm_ChooseShip3_continue();
+            }
+            else
+            {
+               this.frm_Travel3_load();
+            }
+         }
+         else if(this.g.playerTurnCounter == 0)
+         {
+            if(NetworkClient.instance.mySlots.indexOf(this.g.player) >= 0)
+            {
+               this.mainCanvas.selectedChild = this.frm_ChooseShip;
+               this.frm_ChooseShip_load();
+            }
+            else
+            {
+               this.frm_Travel3_networkWait();
+            }
          }
          else if(NetworkClient.instance.mySlots.indexOf(this.g.player) >= 0 && this.g.p[this.g.player].turnTaken == false)
          {
@@ -71407,7 +71451,6 @@ package
             this.init();
             this.title = "DIAG3-init-returned";
             NetworkClient.instance.addEventListener(NetworkEvent.STATE_RECEIVED,this.frm_Travel3_onNetworkStateReceived);
-            NetworkLobbyUI.attachTrigger(this);
          }
          catch(e:Error)
          {
@@ -71639,11 +71682,20 @@ package
       public function __frm_HowManyPlayers_show(param1:FlexEvent) : void
       {
          this.frm_HowManyPlayers_load();
+         if(this.networkTrigger == null)
+         {
+            this.networkTrigger = NetworkLobbyUI.attachTrigger(this);
+         }
       }
-      
+
       public function __frm_HowManyPlayers_hide(param1:FlexEvent) : void
       {
          this.stopSound();
+         if(this.networkTrigger != null)
+         {
+            this.rawChildren.removeChild(this.networkTrigger);
+            this.networkTrigger = null;
+         }
       }
       
       public function __frm_HowManyPlayers_1_click(param1:MouseEvent) : void

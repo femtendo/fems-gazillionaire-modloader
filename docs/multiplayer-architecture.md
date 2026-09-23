@@ -74,37 +74,67 @@ in memory.
 - No game logic lives here. It never touches `GameType` fields directly,
   only the serialized blob.
 
-### 3. Engine hook — `frm_Travel3_load()`
+### 3. Engine hooks — two dispatchers, one pattern
 
-At the top of `frm_Travel3_load()`:
+There isn't just one sequential per-player dispatcher in this game —
+there are two, and both needed the same host-authoritative guard:
 
-```
-if (NetworkClient.isNetworked) {
-    var nextSlot:int = ...; // same index frm_Travel3_load already computes
-    if (!NetworkClient.mySlots.indexOf(nextSlot) >= 0) {
-        // not our turn: ask NetworkClient for the next state broadcast
-        // instead of proceeding synchronously, then resume with the
-        // received GameType.deserialize() applied to `g`.
-        NetworkClient.awaitState(onRemoteStateReceived);
-        return;
-    }
-}
-```
+- `frm_Travel3_load()` (`Gazillionaire.as:67025`) — the actual turn-based
+  play loop, documented in `docs/architecture.md`.
+- `frm_ChooseShip3_continue()` (`Gazillionaire.as:~50737`) — a separate,
+  earlier per-player setup loop (ship selection + company naming) that
+  runs once per player *before* `frm_Travel3_load()` ever fires. It has
+  its own `g.player` increment and its own "show the next player's
+  screen" logic, entirely independent of the travel dispatcher. Missing
+  this one would mean guests could sync turns but never actually pick a
+  ship — this was caught by tracing the real call graph, not guessed.
 
-And at the point a turn is fully committed (end of the existing
-`turnTaken = true` assignment for a network-controlled slot), call
-`NetworkClient.publishTurn(g.serialize())`.
+Both get the same two-sided guard:
 
-This is the only touch point in the 106K-line file. Everything else (buy/
-sell, ship selection, market) is unchanged — those all operate on local `g`
-state during "my turn" exactly as in hotseat today.
+- **Top-of-function guest guard**: if I'm networked and not the host,
+  reaching this function means my own part (turn, or ship pick) just
+  finished. Publish `g.serialize()` to the host and show a waiting
+  screen instead of running the vanilla body.
+- **Hand-off guard** at the point either dispatcher would show UI for
+  the *next* player: if that slot belongs to a remote guest (not the
+  host's own `mySlots`), publish state and wait instead of showing it
+  locally.
 
-### 4. Lobby UI
+A single `NetworkEvent.STATE_RECEIVED` handler
+(`frm_Travel3_onNetworkStateReceived`) resumes whichever dispatcher is
+relevant, using `g.playerTurnCounter == 0` as a free, already-existing
+signal for "still in ship-selection/setup" (only `frm_Travel3_load()`
+ever changes it away from its game-init value of 0, and that never runs
+until setup is done) — no new wire-protocol field needed to tell the two
+phases apart.
 
-Minimal: one new screen reachable from the main menu — "Play Online" with
-a text field (room code) and Create/Join buttons, wired the same way other
-`frm_*` screens are. No new visual assets; reuses existing panel/button
-skins.
+### 4. Lobby UI — where hosting/joining actually lives
+
+Multiplayer games are only startable/joinable from `frm_HowManyPlayers`
+("How Many Players?" — the screen where you already decide 1-6 human
+participants before anything else is configured), not from a
+global always-present button. `NetworkLobbyUI.attachTrigger()` is called
+from `__frm_HowManyPlayers_show` and torn down in
+`__frm_HowManyPlayers_hide`, so the "Play Online" corner button only
+exists on that one screen.
+
+- **Host**: click Play Online → Connect (blank room code) *before*
+  picking a player count. Room code shows in the popup; host then closes
+  it and clicks e.g. "Three Players" as normal — the entire rest of
+  setup (opponents, planets, ship selection) runs exactly like hotseat,
+  since the host is always slot 0 and plays every setup screen for their
+  own slot locally. The hand-off guard only kicks in when setup reaches
+  a slot that isn't the host's.
+- **Join**: click Play Online → Join (host's address + room code + the
+  slot number the host tells them out-of-band, e.g. over chat: "you're
+  player 2"). On success the popup closes itself and jumps straight to
+  a waiting screen — a guest never touches `frm_HowManyPlayers` or any
+  local setup screen; the host's broadcasts drive everything.
+
+This directly answers "why is a slot number needed at all instead of
+auto-assignment": there's no matchmaking/allocation server, just a dumb
+relay, so slot assignment is a manual (out-of-band) coordination step,
+same spirit as the room code itself.
 
 ## Build integration
 
@@ -164,6 +194,41 @@ run on a real Windows machine.
   `frm_Travel3_load()`/`frm_Travel3_onNetworkStateReceived()` is reasoned
   through carefully (see above) and compiles, but has not been watched
   actually run across two players.
+
+## Not built: joining an already-running game as a rival faction
+
+The current model requires a guest's slot to be pre-allocated by the
+host at game-setup time (pick N players, guests claim slot 1..N-1 before
+or during ship selection). Explicitly requested but not built: joining a
+game that's *already past setup*, taking over one of the 6 AI-controlled
+opponent companies (Gizzy Shipping, Trading Corp IV, etc.) mid-game.
+
+This is a materially bigger task than anything else here, not just a
+smaller version of the same pattern:
+
+- `PlayerType` and `OpponentType` are different, non-interchangeable data
+  models (`docs/architecture.md`). `OpponentType` tracks `netWorth`,
+  `cash`, `IQ`, `commodityTags`, `shipTons` — a simplified AI abstraction,
+  not the granular per-commodity ownership (`comS`/`comPP` per planet/
+  category/item), warehouse, insurance, and loan state `PlayerType` has.
+  All of the game's buy/sell/travel UI reads/writes `PlayerType` fields
+  exclusively. An opponent literally doesn't have the state a human
+  needs to play it through the existing screens.
+- Making this work needs either (a) migrating a chosen opponent's data
+  into a freshly-created `PlayerType` slot and redirecting that
+  `playerOrder[]` index from `frm_Travel3_opponentTurn()` (AI) to
+  `frm_PlayerTurn` (human UI) for the rest of the game, or (b) building
+  full human-playable UI against `OpponentType`'s smaller field set
+  directly. Either is real, untested engine surgery — not something to
+  guess at blind in a 106K-line decompiled file with no way to run a
+  live two-client session here.
+
+If/when this is picked up: a "Join Running Game" button on
+`frm_MainMenu` (the active in-game menu, not the title screen) is the
+right entry point per the original request — it should list opponent
+companies not already claimed by a human, let a guest pick one, and from
+that point on treat that slot exactly like a normal networked player
+slot for turn dispatch purposes.
 
 ## Failure modes / ponytail cuts
 

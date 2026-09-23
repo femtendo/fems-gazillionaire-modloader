@@ -1,6 +1,5 @@
 package
 {
-   import flash.display.DisplayObject;
    import flash.display.Sprite;
    import flash.events.MouseEvent;
    import flash.text.TextField;
@@ -31,14 +30,20 @@ package
 
       private var statusLabel:Label;
 
-      // Adds a small always-visible "Play Online" corner button to the
-      // running app, without touching its declarative UI tree. Built from
-      // raw Sprite/TextField rather than mx.controls.Button: this runs at
-      // applicationComplete, before the Flex StyleManager has necessarily
-      // finished loading _Gazillionaire_Styles, so a themed halo Button
-      // was found (visually, via screenshot) to render nothing at all.
-      // Plain display-list drawing has no such dependency.
-      public static function attachTrigger(app:Object) : void
+      private var app:Gazillionaire;
+
+      // Adds a small "Play Online" corner button, without touching the
+      // declarative UI tree. Built from raw Sprite/TextField rather than
+      // mx.controls.Button: attached at applicationComplete once (before
+      // this was scoped to a single screen), the Flex StyleManager hadn't
+      // necessarily finished loading _Gazillionaire_Styles yet, so a
+      // themed halo Button was found (visually, via screenshot) to render
+      // nothing at all. Plain display-list drawing has no such
+      // dependency. Caller owns the returned Sprite and must
+      // rawChildren.removeChild() it when the button should go away (see
+      // __frm_HowManyPlayers_show/_hide in Gazillionaire.as - multiplayer
+      // games are only startable/joinable from that screen).
+      public static function attachTrigger(app:Gazillionaire) : Sprite
       {
          var button:Sprite = new Sprite();
          button.graphics.beginFill(0x2255aa);
@@ -58,15 +63,17 @@ package
          button.y = 8;
          button.addEventListener(MouseEvent.CLICK,function(e:MouseEvent) : void
          {
-            NetworkLobbyUI.show(app as DisplayObject);
+            NetworkLobbyUI.show(app);
          });
          app.rawChildren.addChild(button);
+         return button;
       }
 
-      public static function show(parent:DisplayObject) : void
+      public static function show(app:Gazillionaire) : void
       {
          var lobby:NetworkLobbyUI = new NetworkLobbyUI();
-         PopUpManager.addPopUp(lobby,parent,true);
+         lobby.app = app;
+         PopUpManager.addPopUp(lobby,app,true);
          PopUpManager.centerPopUp(lobby);
       }
 
@@ -135,7 +142,23 @@ package
 
       private function onRoomReady(event:NetworkEvent) : void
       {
-         this.statusLabel.text = "Room code: " + event.data.code + " — waiting for other players.";
+         if(NetworkClient.instance.isHost)
+         {
+            // Host keeps configuring the game normally (opponents,
+            // planets, ship selection) - just note the code to share.
+            this.statusLabel.text = "Room code: " + event.data.code + " - share this with other players, then pick your player count below.";
+         }
+         else
+         {
+            // Guest never touches the local setup screens - the host
+            // controls all of that and broadcasts it. Close this popup
+            // and switch straight to a waiting screen.
+            PopUpManager.removePopUp(this);
+            if(this.app != null)
+            {
+               this.app.frm_Travel3_networkWait();
+            }
+         }
       }
 
       private function onNetworkError(event:NetworkEvent) : void
