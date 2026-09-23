@@ -67216,16 +67216,48 @@ package
          }
       }
 
-      // Shows the existing Travel3 screen in a "waiting for other
-      // players" state, reusing its components rather than adding new UI.
+      // Waiting-for-other-players overlay. Originally this reused the
+      // frm_Travel3 screen (swapping its own text/visibility), but
+      // frm_Travel3 has a "show" event wired to __frm_Travel3_show(),
+      // which unconditionally calls frm_Travel3_load() - so simply
+      // *displaying* the wait screen re-entered real turn-dispatch logic
+      // against a guest's not-yet-populated GameType, crashing inside
+      // GameType.serialize() with a null reference (caught by live
+      // two-client testing, not by reading the code). A standalone
+      // overlay added via rawChildren never touches mainCanvas
+      // .selectedChild, so it can't trigger any screen's "show" wiring.
+      private var networkWaitOverlay:Sprite;
+
       internal function frm_Travel3_networkWait() : void
       {
-         this.frm_Travel3_image.source = "SWF/WHITE_H.SWF";
-         this.frm_Travel3_header.htmlText = "Online Game";
-         this.frm_Travel3_text.htmlText = "Waiting for other players’ turns...";
-         this.frm_Travel3_button_ok.visible = false;
-         this.frm_Travel3_txt_ok.visible = false;
-         this.mainCanvas.selectedChild = this.frm_Travel3;
+         if(this.networkWaitOverlay == null)
+         {
+            this.networkWaitOverlay = new Sprite();
+            this.networkWaitOverlay.graphics.beginFill(0x000000,0.85);
+            this.networkWaitOverlay.graphics.drawRect(0,0,760,570);
+            this.networkWaitOverlay.graphics.endFill();
+            var label:TextField = new TextField();
+            label.autoSize = TextFieldAutoSize.CENTER;
+            label.selectable = false;
+            label.mouseEnabled = false;
+            label.defaultTextFormat = new TextFormat("_sans",16,0xffffff,true);
+            label.text = "Waiting for other players' turns...";
+            label.x = (760 - label.width) / 2;
+            label.y = 270;
+            this.networkWaitOverlay.addChild(label);
+         }
+         if(this.networkWaitOverlay.parent == null)
+         {
+            this.rawChildren.addChild(this.networkWaitOverlay);
+         }
+      }
+
+      internal function frm_Travel3_hideNetworkWait() : void
+      {
+         if(this.networkWaitOverlay != null && this.networkWaitOverlay.parent != null)
+         {
+            this.rawChildren.removeChild(this.networkWaitOverlay);
+         }
       }
 
       // Fired by NetworkClient whenever a state blob arrives (either the
@@ -67233,6 +67265,7 @@ package
       // host's broadcast of whose turn is next).
       internal function frm_Travel3_onNetworkStateReceived(param1:NetworkEvent) : void
       {
+         this.frm_Travel3_hideNetworkWait();
          this.g.deserialize(param1.state);
          // g.playerTurnCounter stays at its game-init value of 0 for the
          // entire ship-selection/company-naming setup phase (only

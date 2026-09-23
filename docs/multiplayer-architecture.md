@@ -10,17 +10,40 @@ game together instead of passing one machine around.
 
 - `GameType.serialize()` / `GameType.deserialize()` (`engine/src/GameType.as:157,294`)
   already turn the entire game state into a `ByteArray` and back — this was
-  built for local/online save-load, but it's exactly the payload a lockstep
-  turn-sync network layer needs. We reuse it as-is.
-- `frm_Travel3_load()` (`engine/src/Gazillionaire.as:67025`) is the **single**
-  turn dispatcher (documented in `docs/architecture.md`). It's the only place
-  that needs a network hook: after a turn completes, broadcast state; before
-  a turn starts for a slot owned by a remote player, wait for their state
-  instead of running local opponent AI.
+  built for local/online save-load, but it's exactly the payload turn-sync
+  needs. We reuse it as-is.
 - The game is already turn-based and strictly sequential (`playerOrder[]`),
-  so there's no need for a lockstep/rollback netcode — a simple
-  "authoritative relay" model works: one relay server holds the latest
-  `GameType` blob and passes it to whichever client's turn is next.
+  so there's no need for a lockstep/rollback netcode — an "authoritative
+  host" model works: the host's client holds the current `GameType` blob
+  and sends it to whichever peer's turn is next.
+
+## Peer-to-peer, not a relay — the host's own game is the server
+
+Earlier revisions of this had players separately run a standalone Node.js
+relay process before playing. Real user feedback ("the installer should
+take care of all of that so a user doesn't have to, and it should only run
+when the game is open") made clear that was the wrong shape: a step a
+player has to remember to run, coordinate a port for, and separately debug
+when something else on their machine squats that port (which is exactly
+the bug that surfaced during real testing — see Verification status).
+
+AIR desktop supports `flash.net.ServerSocket` for listening directly, so
+the host's own game process **is** the server:
+
+- No separate process to install, run, or keep track of.
+- Exists only while the host's game is open — closing the game closes the
+  listening socket, automatically satisfying "only run when the game is
+  open."
+- One fewer port for anything else on the host's machine to collide with,
+  since it isn't a fixed well-known service running independently of the
+  game.
+
+The trade-off is the one every peer-to-peer game has: the host needs to be
+reachable at the port they're listening on. LAN play works with no setup.
+Over the internet, the host forwards that port on their router — same
+requirement as any P2P game, not something a WebSocket-style relay would
+have avoided for actually free (a public relay is a real server someone
+has to run and pay for).
 
 ## What we are explicitly NOT building
 
@@ -30,56 +53,55 @@ game together instead of passing one machine around.
   actual Steam AppID, none of which is available in this repo or to this
   agent. `docs/architecture.md` already confirms zero existing Steam bridge
   code. Building a fake one would be unverifiable and likely wrong.
-- Instead: a **6-character room code**, produced by the relay server,
-  that a player shares with friends however they like — Steam chat, Discord,
-  voice. This is the same UX as most indie co-op games' "enter code to join"
-  flow and needs no Steam API access. Upgrading to real Steam lobby
-  invites later is a swap of the "how do players get the code to each
-  other" step only — the relay/sync layer underneath doesn't change.
-- Any dedicated hosting. The relay server is a small Node process either
-  player can run locally (LAN) or on any box with a public port; no
-  matchmaking backend, accounts, or persistence beyond one in-memory game.
+- Instead: the host shares their address and port with friends however
+  they like — Steam chat, Discord, voice. Same UX as most indie co-op
+  games' "enter the host's address" flow, no Steam API access needed.
+  Upgrading to real Steam lobby invites later only changes how players get
+  that address to each other — the sync layer underneath doesn't change.
+- NAT traversal / hole-punching. See trade-off above.
 
 ## Components
 
-### 1. Relay server — `tools/multiplayer-server/`
+### 1. Client/host — `engine/src/NetworkClient.as`
 
-Plain Node.js `net` module, no dependencies (this repo has none today —
-not adding any for a length-prefixed TCP relay). One process holds N rooms
-in memory.
+Both roles live in one class:
 
-- One raw TCP socket per client, length-prefixed frames (4-byte
-  big-endian length + UTF-8 JSON for control messages, or + raw bytes for
-  the `GameType` blob, tagged by a 1-byte frame type).
-- Room lifecycle: `create` → 6-char code → other clients `join <code>`.
-- Server does **not** interpret game state. It just remembers "whose turn
-  is it" (an integer slot index, mirrored from `g.playerTurnCounter`) and
-  relays the latest state blob to whoever's slot is next. This keeps the
-  server dumb and avoids re-implementing any game rules server-side.
-- Message types: `hello`, `create`, `join`, `joined`, `peer-list`,
-  `state` (binary GameType blob + `turn`/`slot` header), `chat`, `error`.
-
-### 2. Client — `engine/src/NetworkClient.as`
-
-- Wraps a `flash.net.Socket` (raw TCP, matching the relay's framing
-  exactly). Kept intentionally tiny: connect, send length-prefixed frame,
-  receive length-prefixed frame, done.
-- Public surface the engine calls into:
-  - `NetworkClient.isNetworked : Boolean`
-  - `NetworkClient.mySlots : Vector.<int>` (which player index/indices this
-    client controls — usually one)
-  - `NetworkClient.connect(host, port, roomCode)`
-  - `NetworkClient.publishTurn(state:ByteArray)`   — called once a turn ends
-  - `NetworkClient.addEventListener(NetworkEvent.STATE_RECEIVED, ...)`
+- **Host** (`hostGame(port, slot)`): binds a `flash.net.ServerSocket` and
+  listens. Each incoming `ServerSocketConnectEvent.CONNECT` hands back an
+  already-connected `Socket` for that guest. Guests announce which slot
+  they're claiming in their first control message; the host tracks
+  `slot -> Socket` in a `Dictionary`.
+- **Guest** (`joinGame(hostAddress, port, slot)`): opens a plain
+  `flash.net.Socket` straight to the host.
+- Every open socket (the host's several guest connections, or the guest's
+  single connection to the host) gets its own receive buffer in a
+  `Dictionary`, since TCP framing must never mix bytes from two different
+  connections.
+- Wire format on every connection, matching what the length-prefixed
+  framing always was: `[1 byte type][4 byte BE length][payload]`
+  (`FRAME_JSON` for control messages, `FRAME_STATE` for a `GameType`
+  blob).
+- `publishTurn(state)` doesn't need the caller to know which role it's
+  running as: the host broadcasts to every connected guest (each guest
+  self-filters by checking `g.player` against its own `mySlots`, unchanged
+  from before); a guest sends to its one connection, the host.
+- Two timeouts protect against a real failure mode found by live testing:
+  a **connect timeout** (nothing accepted the TCP connection at all) and a
+  separate **handshake timeout** (TCP connected fine, but nothing
+  Gazillionaire-shaped ever replied — e.g. an unrelated server already
+  bound to that port answered instead). The first byte of every frame is
+  also validated against the two known frame types; anything else closes
+  the connection with an explicit "something else is listening on that
+  address/port" error instead of hanging or silently discarding garbage.
 - No game logic lives here. It never touches `GameType` fields directly,
   only the serialized blob.
 
-### 3. Engine hooks — two dispatchers, one pattern
+### 2. Engine hooks — two dispatchers, one pattern
 
 There isn't just one sequential per-player dispatcher in this game —
 there are two, and both needed the same host-authoritative guard:
 
-- `frm_Travel3_load()` (`Gazillionaire.as:67025`) — the actual turn-based
+- `frm_Travel3_load()` (`Gazillionaire.as:~67045`) — the actual turn-based
   play loop, documented in `docs/architecture.md`.
 - `frm_ChooseShip3_continue()` (`Gazillionaire.as:~50737`) — a separate,
   earlier per-player setup loop (ship selection + company naming) that
@@ -94,7 +116,7 @@ Both get the same two-sided guard:
 - **Top-of-function guest guard**: if I'm networked and not the host,
   reaching this function means my own part (turn, or ship pick) just
   finished. Publish `g.serialize()` to the host and show a waiting
-  screen instead of running the vanilla body.
+  overlay instead of running the vanilla body.
 - **Hand-off guard** at the point either dispatcher would show UI for
   the *next* player: if that slot belongs to a remote guest (not the
   host's own `mySlots`), publish state and wait instead of showing it
@@ -108,7 +130,19 @@ ever changes it away from its game-init value of 0, and that never runs
 until setup is done) — no new wire-protocol field needed to tell the two
 phases apart.
 
-### 4. Lobby UI — where hosting/joining actually lives
+The "waiting for other players" state is a standalone overlay
+(`frm_Travel3_networkWait()`/`frm_Travel3_hideNetworkWait()`), not a
+reused screen. It originally reused the `frm_Travel3` screen (swapping
+its text), but that screen has a `show` event wired to
+`__frm_Travel3_show()`, which unconditionally calls `frm_Travel3_load()`
+— so simply *displaying* the wait screen re-entered real turn-dispatch
+logic against a guest's not-yet-populated `GameType` and crashed inside
+`GameType.serialize()` with a null reference. Caught by live two-client
+testing, not by reading the code. A plain `Sprite` overlay added via
+`rawChildren` never touches `mainCanvas.selectedChild`, so it can't
+trigger any screen's `show` wiring.
+
+### 3. Lobby UI — where hosting/joining actually lives
 
 Multiplayer games are only startable/joinable from `frm_HowManyPlayers`
 ("How Many Players?" — the screen where you already decide 1-6 human
@@ -118,23 +152,25 @@ from `__frm_HowManyPlayers_show` and torn down in
 `__frm_HowManyPlayers_hide`, so the "Play Online" corner button only
 exists on that one screen.
 
-- **Host**: click Play Online → Connect (blank room code) *before*
-  picking a player count. Room code shows in the popup; host then closes
-  it and clicks e.g. "Three Players" as normal — the entire rest of
-  setup (opponents, planets, ship selection) runs exactly like hotseat,
-  since the host is always slot 0 and plays every setup screen for their
-  own slot locally. The hand-off guard only kicks in when setup reaches
-  a slot that isn't the host's.
-- **Join**: click Play Online → Join (host's address + room code + the
-  slot number the host tells them out-of-band, e.g. over chat: "you're
-  player 2"). On success the popup closes itself and jumps straight to
-  a waiting screen — a guest never touches `frm_HowManyPlayers` or any
-  local setup screen; the host's broadcasts drive everything.
+- **Host**: click Play Online → leave the address field blank → Connect.
+  This starts listening immediately (before picking a player count); the
+  popup shows the port to share. Host then closes it and clicks e.g.
+  "Three Players" as normal — the entire rest of setup (opponents,
+  planets, ship selection) runs exactly like hotseat, since the host is
+  always slot 0 and plays every setup screen for their own slot locally.
+  The hand-off guard only kicks in when setup reaches a slot that isn't
+  the host's.
+- **Join**: click Play Online → fill in the host's address, port, and the
+  slot number the host tells them to use (out-of-band, e.g. over chat:
+  "you're player 2") → Connect. On success the popup closes itself and
+  jumps straight to the waiting overlay — a guest never touches
+  `frm_HowManyPlayers` or any local setup screen; the host's broadcasts
+  drive everything.
 
-This directly answers "why is a slot number needed at all instead of
-auto-assignment": there's no matchmaking/allocation server, just a dumb
-relay, so slot assignment is a manual (out-of-band) coordination step,
-same spirit as the room code itself.
+Slot assignment being a manual, out-of-band step (rather than
+auto-assigned) is a direct consequence of there being no matchmaking
+server in this design — the host just tells guests which number to type
+in, the same spirit as sharing an address.
 
 ## Build integration
 
@@ -172,28 +208,47 @@ the repo, both built from macOS/Linux (no Windows machine needed):
   certificate available to fix that properly); prefer the zip unless a
   "real" installer UI matters more than avoiding that false positive.
 
-Like `install.ps1` itself, both have been compiled/logic-reviewed but not
-run on a real Windows machine.
+`install.ps1` prints its own version string as the first thing it does
+(bump `$ScriptVersion` whenever the file changes), specifically to make a
+stale-copy-vs-real-bug ambiguity in a bug report resolvable in one
+round-trip instead of another guess.
 
 ## Verification status
 
+Everything below was verified live, not just by reading the code —
+including two real bugs that static review alone did not catch:
+
 - Compiles clean against the full 106K-line engine.
-- `tools/multiplayer-server/relay.js` has an automated test
-  (`tests/multiplayer-server/relay.test.js`) covering framing and a full
-  create/join/relay round trip between two plain TCP clients.
-- Live-verified on the real local Steam install: launched the patched app,
-  clicked Play Online → Connect, and got a real room code back from the
-  relay over an actual `flash.net.Socket` — confirms the AS3
-  `NetworkClient` ↔ relay wire protocol works, not just the Node-side test.
-- **Not yet verified**: a second real client joining and a full turn
-  handoff through `frm_Travel3_load()`. AIR enforces single-instance per
-  app ID, so a genuine two-client test needs two separate machines/Steam
-  accounts (or two installs with distinct app IDs), which weren't
-  available while building this. This is the single biggest risk before
-  calling multiplayer "done" — the turn-sync logic in
-  `frm_Travel3_load()`/`frm_Travel3_onNetworkStateReceived()` is reasoned
-  through carefully (see above) and compiles, but has not been watched
-  actually run across two players.
+- **Full two-client session, run on one Mac** using two independent AIR
+  processes (the installed app as host, a second instance launched via
+  `adl` with a distinct application id so AIR's single-instance lock
+  doesn't collide with the first): host started listening
+  (`ServerSocket.bind`/`listen` succeeded), guest connected directly over
+  TCP with no intermediary, both completed ship selection with the
+  hand-off guard correctly routing each player's own screen to their own
+  client, the host received the guest's finished state and correctly
+  resumed with *both* players' data merged into one `GameType` (confirmed
+  on the Week 1 leaderboard screen, which listed both companies), and the
+  host's own turn began normally afterward. No crashes anywhere in that
+  path.
+- **Real Windows tester, real bug found and fixed live**: an unrelated
+  local server (not part of this project) happened to already be bound to
+  `127.0.0.1:8642` specifically. Because that bind was more specific than
+  the (now-removed) relay's wildcard bind, every connection attempt
+  silently landed on the wrong server, which replied with an HTTP error
+  instead of anything Gazillionaire-shaped. The original connect-timeout
+  never fired, because the TCP connect itself had genuinely succeeded —
+  it just wasn't talking to a peer that spoke this protocol. This directly
+  motivated both the handshake timeout and the frame-type validation
+  described above, *and* was part of what motivated dropping the
+  standalone relay in favor of peer-to-peer (the host no longer needs to
+  agree on a well-known port with anything else running on their
+  machine).
+- **Not yet verified**: a real two-machine session over an actual network
+  (LAN or internet) — everything above was same-machine loopback. The
+  protocol and hand-off logic don't care whether the socket happens to be
+  loopback or not, but router port-forwarding for the "over the internet"
+  case specifically remains unverified in practice.
 
 ## Not built: joining an already-running game as a rival faction
 
@@ -220,8 +275,7 @@ smaller version of the same pattern:
   `frm_PlayerTurn` (human UI) for the rest of the game, or (b) building
   full human-playable UI against `OpponentType`'s smaller field set
   directly. Either is real, untested engine surgery — not something to
-  guess at blind in a 106K-line decompiled file with no way to run a
-  live two-client session here.
+  guess at blind in a 106K-line decompiled file.
 
 If/when this is picked up: a "Join Running Game" button on
 `frm_MainMenu` (the active in-game menu, not the title screen) is the
@@ -233,12 +287,12 @@ slot for turn dispatch purposes.
 ## Failure modes / ponytail cuts
 
 - No reconnect/resume-mid-turn handling yet — a dropped connection means
-  restart the room. `# ponytail: no reconnect, add session resume if
+  restart the game. `# ponytail: no reconnect, add session resume if
   players report drops in practice.`
-- No NAT traversal — relay must be reachable by all clients (LAN, or a
-  public host/port-forward). `# ponytail: no hole-punching, add if
-  players can't port-forward.`
-- Server trusts whatever `GameType` blob the current-turn client sends
-  (no anti-cheat validation). Fine for friends playing together;
+- No NAT traversal — the host must be reachable by every guest (LAN, or
+  the host's router with the chosen port forwarded).
+  `# ponytail: no hole-punching, add if players can't port-forward.`
+- Host trusts whatever `GameType` blob the current-turn guest sends (no
+  anti-cheat validation). Fine for friends playing together;
   `# ponytail: no server-side validation, add if this ships beyond a
   friend group.`

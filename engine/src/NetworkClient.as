@@ -4,17 +4,24 @@ package
    import flash.events.EventDispatcher;
    import flash.events.IOErrorEvent;
    import flash.events.ProgressEvent;
+   import flash.events.ServerSocketConnectEvent;
+   import flash.net.ServerSocket;
    import flash.net.Socket;
    import flash.utils.ByteArray;
+   import flash.utils.Dictionary;
    import flash.utils.Endian;
    import flash.utils.clearTimeout;
    import flash.utils.setTimeout;
 
-   // Client for the multiplayer relay in tools/multiplayer-server/relay.js.
-   // Frame format (must match the server): [1 byte type][4 byte BE length][payload].
-   // See docs/multiplayer-architecture.md. Owns no game state — the engine
-   // hands it a GameType.serialize() blob to publish and gets a raw blob
-   // back on NetworkEvent.STATE_RECEIVED, which the caller deserializes.
+   // Peer-to-peer multiplayer client. The host's own game IS the server
+   // (flash.net.ServerSocket) - no separate process to install, configure,
+   // or remember to start; it only exists while the host's game is open.
+   // Guests connect directly to the host's address:port with a plain
+   // flash.net.Socket. Frame format on every connection: [1 byte type]
+   // [4 byte BE length][payload]. See docs/multiplayer-architecture.md.
+   // Owns no game state - the engine hands it a GameType.serialize() blob
+   // to publish and gets a raw blob back on NetworkEvent.STATE_RECEIVED,
+   // which the caller deserializes.
    public class NetworkClient extends EventDispatcher
    {
 
@@ -24,12 +31,17 @@ package
 
       private static const HEADER_LEN:int = 5;
 
-      // flash.net.Socket has no built-in connect timeout - without this, a
-      // relay that isn't running/reachable (wrong address, firewall
-      // silently dropping packets rather than refusing the connection,
-      // nobody started tools/multiplayer-server/relay.js yet) leaves the
-      // lobby UI stuck on "Connecting..." indefinitely with no feedback.
+      // Time to wait for a TCP connect to succeed at all.
       private static const CONNECT_TIMEOUT_MS:int = 6000;
+
+      // Time to wait, AFTER connecting, for a "welcome"/join-ack frame.
+      // A real-world bug (something else already listening on the chosen
+      // port, e.g. an unrelated local server) let TCP connect succeed
+      // while the peer never spoke our protocol at all - the connect
+      // timeout alone never caught that, since it only guards the
+      // connect step. This catches "connected but nothing legitimate is
+      // on the other end" too.
+      private static const HANDSHAKE_TIMEOUT_MS:int = 6000;
 
       private static var _instance:NetworkClient;
 
@@ -42,17 +54,27 @@ package
          return _instance;
       }
 
-      private var socket:Socket;
+      // Host role.
+      private var serverSocket:ServerSocket;
+
+      private var guestSockets:Dictionary;
+
+      // Shared by both roles: every open socket (host's per-guest sockets,
+      // or the guest's single connection to the host) gets its own
+      // receive buffer, since TCP framing must never mix bytes from two
+      // different connections.
+      private var recvBuffers:Dictionary;
+
+      // Guest role.
+      private var clientSocket:Socket;
 
       private var connectTimeoutId:uint = 0;
 
-      private var recvBuffer:ByteArray;
+      private var handshakeTimeoutId:uint = 0;
 
       private var _isNetworked:Boolean = false;
 
       private var _mySlots:Array = [];
-
-      private var _roomCode:String = null;
 
       private var _isHost:Boolean = false;
 
@@ -74,95 +96,185 @@ package
          return _mySlots;
       }
 
-      public function get roomCode() : String
-      {
-         return _roomCode;
-      }
-
       public function NetworkClient()
       {
          super();
-         recvBuffer = new ByteArray();
+         guestSockets = new Dictionary();
+         recvBuffers = new Dictionary();
       }
 
-      // Connects and asks the relay to create a fresh room; the caller's
-      // slot becomes the first turn slot. Fires NetworkEvent.ROOM_READY
-      // with the generated room code once the server confirms.
-      public function hostGame(host:String, port:int, slot:int) : void
+      // Starts listening directly for guest connections on `port` - the
+      // host's own game process is the server. Share this machine's IP
+      // address (LAN: shown by e.g. `ipconfig`; over the internet: the
+      // router's WAN IP with `port` forwarded to this machine) and `port`
+      // with whoever is joining. Fires NetworkEvent.ROOM_READY once
+      // listening starts, or NetworkEvent.ERROR if the port can't be
+      // bound (e.g. already in use by something else).
+      public function hostGame(port:int, slot:int) : void
       {
          _mySlots = [slot];
          _isHost = true;
-         openSocket(host, port, function() : void
+         serverSocket = new ServerSocket();
+         serverSocket.addEventListener(ServerSocketConnectEvent.CONNECT,onGuestConnect);
+         serverSocket.addEventListener(IOErrorEvent.IO_ERROR,onServerSocketError);
+         try
          {
-            sendControl({
-               "type":"create",
-               "slot":slot
-            });
-         });
+            serverSocket.bind(port);
+            serverSocket.listen();
+            _isNetworked = true;
+            dispatchEvent(new NetworkEvent(NetworkEvent.ROOM_READY,null,{"port":port}));
+         }
+         catch(e:Error)
+         {
+            _isNetworked = false;
+            dispatchEvent(new NetworkEvent(NetworkEvent.ERROR,null,{"message":"Could not start hosting on port " + port + ": " + e.message + ". Something else may already be using that port - try a different one."}));
+         }
       }
 
-      // Connects and joins an existing room by code.
-      public function joinGame(host:String, port:int, code:String, slot:int) : void
+      private function onServerSocketError(e:IOErrorEvent) : void
+      {
+         _isNetworked = false;
+         dispatchEvent(new NetworkEvent(NetworkEvent.ERROR,null,{"message":"Hosting failed: " + e.text}));
+      }
+
+      private function onGuestConnect(e:ServerSocketConnectEvent) : void
+      {
+         var guest:Socket = e.socket;
+         recvBuffers[guest] = new ByteArray();
+         guest.addEventListener(ProgressEvent.SOCKET_DATA,onSocketData);
+         guest.addEventListener(IOErrorEvent.IO_ERROR,onGuestDisconnect);
+         guest.addEventListener(Event.CLOSE,onGuestDisconnect);
+      }
+
+      private function onGuestDisconnect(e:Event) : void
+      {
+         var guest:Socket = e.currentTarget as Socket;
+         delete recvBuffers[guest];
+         var slot:String;
+         for(slot in guestSockets)
+         {
+            if(guestSockets[slot] === guest)
+            {
+               delete guestSockets[slot];
+            }
+         }
+      }
+
+      // Connects directly to whoever is hosting - no intermediary.
+      public function joinGame(hostAddress:String, port:int, slot:int) : void
       {
          _mySlots = [slot];
          _isHost = false;
-         openSocket(host, port, function() : void
+         clientSocket = new Socket();
+         recvBuffers[clientSocket] = new ByteArray();
+         clientSocket.addEventListener(Event.CONNECT,function(e:Event) : void
          {
-            sendControl({
+            clearConnectTimeout();
+            sendControlOn(clientSocket,{
                "type":"join",
-               "code":code,
                "slot":slot
             });
+            armHandshakeTimeout(hostAddress,port);
          });
+         clientSocket.addEventListener(ProgressEvent.SOCKET_DATA,onSocketData);
+         clientSocket.addEventListener(IOErrorEvent.IO_ERROR,onClientSocketError);
+         clientSocket.connect(hostAddress,port);
+         connectTimeoutId = setTimeout(function() : void
+         {
+            connectTimeoutId = 0;
+            if(clientSocket != null && clientSocket.connected)
+            {
+               return;
+            }
+            if(clientSocket != null)
+            {
+               clientSocket.close();
+            }
+            dispatchEvent(new NetworkEvent(NetworkEvent.ERROR,null,{"message":"Could not connect to " + hostAddress + ":" + port + " within " + (CONNECT_TIMEOUT_MS / 1000) + "s. Is the host's game running and reachable at that address/port?"}));
+         },CONNECT_TIMEOUT_MS);
+      }
+
+      private function armHandshakeTimeout(hostAddress:String, port:int) : void
+      {
+         handshakeTimeoutId = setTimeout(function() : void
+         {
+            handshakeTimeoutId = 0;
+            if(_isNetworked)
+            {
+               return;
+            }
+            if(clientSocket != null)
+            {
+               clientSocket.close();
+            }
+            dispatchEvent(new NetworkEvent(NetworkEvent.ERROR,null,{"message":"Connected to " + hostAddress + ":" + port + " but got no reply within " + (HANDSHAKE_TIMEOUT_MS / 1000) + "s. Something else is likely using that port - it isn't a Gazillionaire host."}));
+         },HANDSHAKE_TIMEOUT_MS);
+      }
+
+      private function clearHandshakeTimeout() : void
+      {
+         if(handshakeTimeoutId != 0)
+         {
+            clearTimeout(handshakeTimeoutId);
+            handshakeTimeoutId = 0;
+         }
       }
 
       public function disconnect() : void
       {
          clearConnectTimeout();
-         if(socket != null && socket.connected)
+         clearHandshakeTimeout();
+         if(serverSocket != null)
          {
-            socket.close();
+            try
+            {
+               serverSocket.close();
+            }
+            catch(e:Error)
+            {
+            }
+            serverSocket = null;
          }
+         if(clientSocket != null && clientSocket.connected)
+         {
+            clientSocket.close();
+         }
+         var slot:String;
+         for(slot in guestSockets)
+         {
+            try
+            {
+               Socket(guestSockets[slot]).close();
+            }
+            catch(e:Error)
+            {
+            }
+         }
+         guestSockets = new Dictionary();
+         recvBuffers = new Dictionary();
          _isNetworked = false;
-         _roomCode = null;
          _isHost = false;
       }
 
-      // Called once a network-controlled player's turn finishes; broadcasts
-      // the serialized GameType so remote clients can pick up the next turn.
+      // Called once a network-controlled player's turn finishes. Host:
+      // broadcasts to every connected guest (each guest self-filters by
+      // checking g.player against its own mySlots, same as before - the
+      // host doesn't need to target a specific connection). Guest: sends
+      // to the host, its only connection.
       public function publishTurn(state:ByteArray) : void
       {
-         if(socket == null || !socket.connected)
+         if(_isHost)
          {
-            return;
+            var slot:String;
+            for(slot in guestSockets)
+            {
+               writeFrameOn(guestSockets[slot],FRAME_STATE,state);
+            }
          }
-         writeFrame(FRAME_STATE, state);
-      }
-
-      private function openSocket(host:String, port:int, onConnected:Function) : void
-      {
-         socket = new Socket();
-         socket.addEventListener(Event.CONNECT, function(e:Event) : void
+         else if(clientSocket != null && clientSocket.connected)
          {
-            clearConnectTimeout();
-            onConnected();
-         });
-         socket.addEventListener(ProgressEvent.SOCKET_DATA, onSocketData);
-         socket.addEventListener(IOErrorEvent.IO_ERROR, onSocketError);
-         socket.connect(host, port);
-         connectTimeoutId = setTimeout(function() : void
-         {
-            connectTimeoutId = 0;
-            if(socket != null && socket.connected)
-            {
-               return;
-            }
-            if(socket != null)
-            {
-               socket.close();
-            }
-            dispatchEvent(new NetworkEvent(NetworkEvent.ERROR, null, {"message":"Could not connect to " + host + ":" + port + " within " + (CONNECT_TIMEOUT_MS / 1000) + "s. Is the relay running and reachable (tools/multiplayer-server/relay.js), and is the address/port correct?"}));
-         }, CONNECT_TIMEOUT_MS);
+            writeFrameOn(clientSocket,FRAME_STATE,state);
+         }
       }
 
       private function clearConnectTimeout() : void
@@ -174,15 +286,14 @@ package
          }
       }
 
-      private function sendControl(msg:Object) : void
+      private function sendControlOn(socket:Socket, msg:Object) : void
       {
-         var json:String = JSON.stringify(msg);
          var payload:ByteArray = new ByteArray();
-         payload.writeUTFBytes(json);
-         writeFrame(FRAME_JSON, payload);
+         payload.writeUTFBytes(JSON.stringify(msg));
+         writeFrameOn(socket,FRAME_JSON,payload);
       }
 
-      private function writeFrame(type:int, payload:ByteArray) : void
+      private function writeFrameOn(socket:Socket, type:int, payload:ByteArray) : void
       {
          socket.endian = Endian.BIG_ENDIAN;
          socket.writeByte(type);
@@ -191,81 +302,107 @@ package
          socket.flush();
       }
 
-      private function onSocketError(e:IOErrorEvent) : void
+      private function onClientSocketError(e:IOErrorEvent) : void
       {
          clearConnectTimeout();
+         clearHandshakeTimeout();
          _isNetworked = false;
-         dispatchEvent(new NetworkEvent(NetworkEvent.ERROR, null, {"message":"Could not connect (" + e.text + "). Check the address/port and that the relay is running."}));
+         dispatchEvent(new NetworkEvent(NetworkEvent.ERROR,null,{"message":"Could not connect (" + e.text + "). Check the address/port and that the host's game is running."}));
       }
 
       private function onSocketData(e:ProgressEvent) : void
       {
+         var socket:Socket = e.currentTarget as Socket;
+         var buf:ByteArray = recvBuffers[socket];
+         if(buf == null)
+         {
+            buf = new ByteArray();
+            recvBuffers[socket] = buf;
+         }
          var chunk:ByteArray = new ByteArray();
          socket.readBytes(chunk);
-         recvBuffer.position = recvBuffer.length;
-         recvBuffer.writeBytes(chunk);
-         drainFrames();
+         buf.position = buf.length;
+         buf.writeBytes(chunk);
+         drainFrames(socket,buf);
       }
 
-      // Consumes every complete frame currently sitting in recvBuffer,
-      // then compacts the buffer down to whatever partial frame remains.
-      private function drainFrames() : void
+      // Consumes every complete frame currently sitting in buf for the
+      // given socket, then compacts it down to whatever partial frame
+      // remains. If the very first byte isn't a frame type this protocol
+      // recognizes, something other than a Gazillionaire peer is on the
+      // other end (e.g. an HTTP server) - fail loudly instead of quietly
+      // discarding garbage and leaving the caller stuck waiting forever.
+      private function drainFrames(socket:Socket, buf:ByteArray) : void
       {
-         recvBuffer.position = 0;
-         while(recvBuffer.bytesAvailable >= HEADER_LEN)
+         buf.position = 0;
+         while(buf.bytesAvailable >= HEADER_LEN)
          {
-            var startPos:int = recvBuffer.position;
-            var type:int = recvBuffer.readUnsignedByte();
-            var len:uint = recvBuffer.readUnsignedInt();
-            if(recvBuffer.bytesAvailable < len)
+            var startPos:int = buf.position;
+            var type:int = buf.readUnsignedByte();
+            if(type != FRAME_JSON && type != FRAME_STATE)
             {
-               recvBuffer.position = startPos;
+               clearHandshakeTimeout();
+               dispatchEvent(new NetworkEvent(NetworkEvent.ERROR,null,{"message":"Got unrecognized data instead of a Gazillionaire handshake - something else is likely listening on that address/port."}));
+               try
+               {
+                  socket.close();
+               }
+               catch(e:Error)
+               {
+               }
+               return;
+            }
+            var len:uint = buf.readUnsignedInt();
+            if(buf.bytesAvailable < len)
+            {
+               buf.position = startPos;
                break;
             }
             var payload:ByteArray = new ByteArray();
-            recvBuffer.readBytes(payload, 0, len);
-            handleFrame(type, payload);
+            buf.readBytes(payload,0,len);
+            handleFrame(socket,type,payload);
          }
          var remaining:ByteArray = new ByteArray();
-         if(recvBuffer.bytesAvailable > 0)
+         if(buf.bytesAvailable > 0)
          {
-            recvBuffer.readBytes(remaining);
+            buf.readBytes(remaining);
          }
-         recvBuffer = remaining;
+         recvBuffers[socket] = remaining;
       }
 
-      private function handleFrame(type:int, payload:ByteArray) : void
+      private function handleFrame(socket:Socket, type:int, payload:ByteArray) : void
       {
          if(type == FRAME_JSON)
          {
             payload.position = 0;
             var msg:Object = JSON.parse(payload.readUTFBytes(payload.length));
-            handleControl(msg);
+            handleControl(socket,msg);
          }
          else if(type == FRAME_STATE)
          {
-            dispatchEvent(new NetworkEvent(NetworkEvent.STATE_RECEIVED, payload));
+            clearHandshakeTimeout();
+            _isNetworked = true;
+            dispatchEvent(new NetworkEvent(NetworkEvent.STATE_RECEIVED,payload));
          }
       }
 
-      private function handleControl(msg:Object) : void
+      private function handleControl(socket:Socket, msg:Object) : void
       {
-         if(msg.type == "created" || msg.type == "joined")
+         if(msg.type == "join" && _isHost)
          {
-            _roomCode = msg.code;
-            _isNetworked = true;
-            dispatchEvent(new NetworkEvent(NetworkEvent.ROOM_READY, null, {"code":_roomCode}));
+            guestSockets[String(int(msg.slot))] = socket;
+            sendControlOn(socket,{"type":"welcome"});
+            dispatchEvent(new NetworkEvent(NetworkEvent.PEER_LIST,null,{"slot":msg.slot}));
          }
-         else if(msg.type == "peer-list")
+         else if(msg.type == "welcome" && !_isHost)
          {
-            dispatchEvent(new NetworkEvent(NetworkEvent.PEER_LIST, null, {
-               "slots":msg.slots,
-               "turnSlot":msg.turnSlot
-            }));
+            clearHandshakeTimeout();
+            _isNetworked = true;
+            dispatchEvent(new NetworkEvent(NetworkEvent.ROOM_READY,null,{}));
          }
          else if(msg.type == "error")
          {
-            dispatchEvent(new NetworkEvent(NetworkEvent.ERROR, null, {"message":msg.message}));
+            dispatchEvent(new NetworkEvent(NetworkEvent.ERROR,null,{"message":msg.message}));
          }
       }
    }

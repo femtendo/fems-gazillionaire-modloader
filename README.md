@@ -13,9 +13,10 @@ backup of the original file.
   events, planets, resources, mechanics, art, and more) on top of the base
   game.
 - An online multiplayer layer that adds networked play on top of the game's
-  existing turn-based hotseat mode: one player hosts (a small relay server,
-  run locally or on any reachable box) and shares a room code with friends
-  however they'd normally talk to them — Steam chat included. See
+  existing turn-based hotseat mode: one player hosts (the game itself listens
+  for connections — nothing separate to install or run, only exists while
+  their game is open) and shares their address and port with friends however
+  they'd normally talk to them — Steam chat included. See
   `docs/multiplayer-architecture.md` for why this doesn't use the Steamworks
   API directly (no SDK/AppID access to build a verified integration against).
 
@@ -69,10 +70,11 @@ Both are wrappers around `tools/installer/install.ps1 install`/`restore`.
    `brew install nsis` — produces `GazillionaireOnlineSetup.exe`, more
    likely to trip antivirus false positives since it's an unsigned
    binary).
-5. To play online: one player picks "Play Online" in-game, runs the relay
-   (`node tools/multiplayer-server/relay.js`) somewhere everyone can reach,
-   and shares the room code it prints. Everyone else picks "Play Online" →
-   Join with that address and code.
+5. To play online: from the "How Many Players?" screen, one player picks
+   Play Online → Connect with the address field blank (hosts, listening
+   directly — no separate process). Everyone else picks Play Online →
+   Connect with that host's address, the port (default 8642), and the
+   player slot the host tells them to use.
 
 See `docs/modding-guide.md` for how to write your own mods,
 `docs/architecture.md` for how the engine is organized, and

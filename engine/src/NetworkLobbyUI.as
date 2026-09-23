@@ -24,8 +24,6 @@ package
 
       private var portField:TextInput;
 
-      private var codeField:TextInput;
-
       private var slotField:TextInput;
 
       private var statusLabel:Label;
@@ -90,17 +88,13 @@ package
       override protected function createChildren() : void
       {
          super.createChildren();
-         var y:int = 10;
-         addChild(this.makeLabel("Server host:port (relay)"));
-         this.hostField = new TextInput();
-         this.hostField.text = "127.0.0.1";
-         addChild(this.hostField);
+         addChild(this.makeLabel("Port"));
          this.portField = new TextInput();
          this.portField.text = "8642";
          addChild(this.portField);
-         addChild(this.makeLabel("Room code (blank = host new game)"));
-         this.codeField = new TextInput();
-         addChild(this.codeField);
+         addChild(this.makeLabel("Host's address (leave blank to host)"));
+         this.hostField = new TextInput();
+         addChild(this.hostField);
          addChild(this.makeLabel("Your player slot (0-5)"));
          this.slotField = new TextInput();
          this.slotField.text = "0";
@@ -128,15 +122,14 @@ package
          var host:String = this.hostField.text;
          var port:int = int(this.portField.text);
          var slot:int = int(this.slotField.text);
-         var code:String = this.codeField.text;
          this.statusLabel.text = "Connecting...";
-         if(code == null || code.length == 0)
+         if(host == null || host.length == 0)
          {
-            NetworkClient.instance.hostGame(host,port,slot);
+            NetworkClient.instance.hostGame(port,slot);
          }
          else
          {
-            NetworkClient.instance.joinGame(host,port,code,slot);
+            NetworkClient.instance.joinGame(host,port,slot);
          }
       }
 
@@ -145,8 +138,11 @@ package
          if(NetworkClient.instance.isHost)
          {
             // Host keeps configuring the game normally (opponents,
-            // planets, ship selection) - just note the code to share.
-            this.statusLabel.text = "Room code: " + event.data.code + " - share this with other players, then pick your player count below.";
+            // planets, ship selection) - the port is listening now, share
+            // this machine's address (ipconfig on Windows) and the port
+            // with whoever's joining, LAN or with it forwarded on your
+            // router for over the internet.
+            this.statusLabel.text = "Hosting on port " + event.data.port + ". Share your address and this port, then pick your player count below.";
          }
          else
          {

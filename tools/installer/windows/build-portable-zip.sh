@@ -27,14 +27,12 @@ command -v zip >/dev/null 2>&1 || {
 rm -rf "$OUT_DIR"
 mkdir -p "$PAYLOAD_DIR/engine" \
          "$PAYLOAD_DIR/build/output/loose-assets" \
-         "$PAYLOAD_DIR/tools/installer" \
-         "$PAYLOAD_DIR/tools/multiplayer-server"
+         "$PAYLOAD_DIR/tools/installer"
 
 cp "$ROOT_DIR/engine/engine.manifest.json" "$PAYLOAD_DIR/engine/"
 cp "$BUILT_SWF" "$PAYLOAD_DIR/build/output/"
 cp "$ROOT_DIR/build/output/loose-assets/manifest.json" "$PAYLOAD_DIR/build/output/loose-assets/" 2>/dev/null || echo '[]' > "$PAYLOAD_DIR/build/output/loose-assets/manifest.json"
 cp "$ROOT_DIR/tools/installer/install.ps1" "$PAYLOAD_DIR/tools/installer/"
-cp "$ROOT_DIR/tools/multiplayer-server/relay.js" "$PAYLOAD_DIR/tools/multiplayer-server/"
 cp "$SCRIPT_DIR/Install.bat" "$SCRIPT_DIR/Uninstall.bat" "$PAYLOAD_DIR/"
 
 (cd "$OUT_DIR" && rm -f GazillionaireOnline-Windows.zip && zip -rq GazillionaireOnline-Windows.zip GazillionaireOnline)
