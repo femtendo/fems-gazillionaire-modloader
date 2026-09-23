@@ -258,6 +258,52 @@ if (fsMod.existsSync(FFDEC_JAR)) {
     console.log('buildFlipbookSwf (loopForever=false): skipped (ffdec not installed on this machine)');
 }
 
+if (fsMod.existsSync(FFDEC_JAR)) {
+    // Frame-dedup regression test (see task-4/final-review fix): prepareFrames
+    // legitimately repeats the SAME fitted frame path many times to hold a
+    // slow GIF frame across several output ticks. buildFlipbookSwf must
+    // define each UNIQUE bitmap/shape only once and reuse it across repeated
+    // PlaceObject2Tag entries, not re-encode/re-deflate a brand-new bitmap
+    // per repeated entry. Prove this by building the same 2 distinct frames
+    // once with no repeats, and again with each repeated 15x (30 total
+    // output frames) — a correct dedup keeps the output size close to the
+    // no-repeat baseline (only cheap PlaceObject2/ShowFrame tags added per
+    // extra output frame), where a naive per-frame-entry implementation
+    // would make the repeated version roughly 15x larger.
+    const workDir = fsMod.mkdtempSync(pathMod.join(require('os').tmpdir(), 'flipbook-dedup-test-'));
+    // Reuse the known-good 1x1 PNG bytes from earlier in this file. Content
+    // doesn't matter for this test — dedup keys off frame PATH identity
+    // (exactly what prepareFrames repeats), not pixel content.
+    const dedupOnePixelPng = Buffer.from(
+        '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c63f8ffffff7f0009fb03fd2a86e38a' +
+        '0000000049454e44ae426082', 'hex'
+    );
+    const fA = pathMod.join(workDir, 'fA.png');
+    const fB = pathMod.join(workDir, 'fB.png');
+    fsMod.writeFileSync(fA, dedupOnePixelPng);
+    fsMod.writeFileSync(fB, dedupOnePixelPng);
+
+    const baselineSwf = pathMod.join(workDir, 'baseline.swf');
+    const repeatedSwf = pathMod.join(workDir, 'repeated.swf');
+    buildFlipbookSwf([fA, fB], 10, 10, 12, true, baselineSwf, FFDEC_JAR);
+    const repeated = [];
+    for (let i = 0; i < 15; i++) repeated.push(fA, fB);
+    buildFlipbookSwf(repeated, 10, 10, 12, true, repeatedSwf, FFDEC_JAR);
+
+    const baselineSize = fsMod.statSync(baselineSwf).size;
+    const repeatedSize = fsMod.statSync(repeatedSwf).size;
+    assert.ok(
+        repeatedSize < baselineSize * 3,
+        `deduped 30-frame output (${repeatedSize} bytes) should stay well under 3x the 2-frame baseline (${baselineSize} bytes) — ` +
+        `a naive non-deduped implementation would be ~15x larger`
+    );
+    const info = readSwfStageInfo(repeatedSwf, FFDEC_JAR);
+    assert.strictEqual(info.frameCount, 30, 'all 30 output frames must still be present despite bitmap dedup');
+    console.log(`buildFlipbookSwf (frame dedup): passed — baseline ${baselineSize}B, 30-frame deduped ${repeatedSize}B`);
+} else {
+    console.log('buildFlipbookSwf (frame dedup): skipped (ffdec not installed on this machine)');
+}
+
 const { convertAsset } = require('../../tools/modloader/loose-assets');
 
 // Raster passthrough case: original is a PNG, input is a PNG of a

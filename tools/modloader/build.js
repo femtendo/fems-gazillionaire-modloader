@@ -19,7 +19,7 @@ const {
     readJsonObjectSafe,
     collectFilesSorted
 } = require('./mods');
-const { convertAsset, prepareFrames, buildFlipbookSwf, autoFitPng } = require('./loose-assets');
+const { convertAsset, prepareFrames, buildFlipbookSwf, autoFitPng, resolveLooseAssetTargetPath } = require('./loose-assets');
 
 const ROOT = path.resolve(__dirname, '../..');
 const ENGINE_DIR = path.resolve(ROOT, 'engine');
@@ -70,9 +70,17 @@ function writeModLoaderInfo(modManifests, cacheKey) {
 // manifest rather than the real game install (which may not be present on
 // the build machine at all).
 function buildLooseAssetsOverlay(modManifestsInPriorityOrder) {
-    if (!fs.existsSync(LOOSE_ASSETS_MANIFEST)) return; // no loose-asset targets known yet
-    const referenceInfo = JSON.parse(fs.readFileSync(LOOSE_ASSETS_MANIFEST, 'utf8'));
+    // Always clear the previous overlay and (re)write a manifest — including
+    // the zero-mod / no-loose-assets-mods case, which must produce an EMPTY
+    // manifest rather than leaving a prior build's stale
+    // build/output/loose-assets/ (and its manifest) sitting around. Without
+    // this, rebuilding with fewer/no mods enabled left install.sh re-
+    // deploying loose assets from a mod set that's no longer even part of
+    // this build.
     fs.rmSync(LOOSE_ASSETS_OUTPUT_DIR, { recursive: true, force: true });
+    const referenceInfo = fs.existsSync(LOOSE_ASSETS_MANIFEST)
+        ? JSON.parse(fs.readFileSync(LOOSE_ASSETS_MANIFEST, 'utf8'))
+        : null;
     // A Set, not an array: a suppressed-priority mod and the winning mod can
     // both physically ship a file at the same loose-assets path (both get
     // iterated and converted/copied in priority order, even though only the
@@ -83,27 +91,44 @@ function buildLooseAssetsOverlay(modManifestsInPriorityOrder) {
     for (const m of modManifestsInPriorityOrder) {
         const modLooseAssets = path.join(m._dir, 'loose-assets');
         if (!fs.existsSync(modLooseAssets)) continue;
+        if (!referenceInfo) {
+            throw new Error(`build aborted: ${m.id} ships loose-assets/ but ${LOOSE_ASSETS_MANIFEST} does not exist to convert against`);
+        }
         for (const relPath of collectFilesSorted(modLooseAssets).map((f) => path.relative(modLooseAssets, f))) {
-            const targetResourcesPath = relPath.replace(/\.(png|gif)$/i, () => {
-                // Loose PNG-folder targets keep .PNG; loose SWF-folder
-                // targets become .SWF regardless of whether the modder's
-                // input was a PNG or a GIF.
-                return relPath.startsWith('PNG' + path.sep) ? '.PNG' : '.SWF';
-            });
-            const meta = referenceInfo[targetResourcesPath.replace(/\\/g, '/')];
+            // Resolved (and upper-cased) via the same helper mods.js uses for
+            // conflict detection, so both places agree on what real file a
+            // given source path actually overwrites regardless of the
+            // modder's input casing/extension (e.g. "MP3/zinn.mp3" and
+            // "SWF/SHIP1.gif" both need to land on the manifest's own
+            // upper-cased keys, e.g. "MP3/ZINN.MP3"/"SWF/SHIP1.SWF").
+            const targetResourcesPath = resolveLooseAssetTargetPath(relPath);
+            const meta = referenceInfo[targetResourcesPath];
             if (!meta) {
-                throw new Error(`loose-assets/${relPath}: no known target "${targetResourcesPath}" in ${LOOSE_ASSETS_MANIFEST} — check the filename against docs/asset-wiki.md`);
+                throw new Error(`build aborted: loose-assets/${relPath}: no known target "${targetResourcesPath}" in ${LOOSE_ASSETS_MANIFEST} — check the filename against docs/asset-wiki.md`);
             }
             const inputPath = path.join(modLooseAssets, relPath);
             const outputPath = path.join(LOOSE_ASSETS_OUTPUT_DIR, targetResourcesPath);
             fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 
-            if (targetResourcesPath.toUpperCase().endsWith('.SWF')) {
+            if (targetResourcesPath.endsWith('.SWF')) {
                 const workDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'loose-swf-'));
                 const { framePaths, loopForever } = prepareFrames(inputPath, meta.widthPx, meta.heightPx, meta.frameRate, workDir);
                 buildFlipbookSwf(framePaths, meta.widthPx, meta.heightPx, meta.frameRate, loopForever, outputPath, FFDEC_JAR);
                 fs.rmSync(workDir, { recursive: true, force: true });
-            } else if (targetResourcesPath.toUpperCase().endsWith('.PNG')) {
+            } else if (targetResourcesPath.endsWith('.PNG')) {
+                // Same guard convertAsset applies to a SWF-target's raster
+                // passthrough case: a static PNG target has no timeline to
+                // animate, so an animated GIF input can't replace it — fail
+                // with a clear message instead of ffmpeg's raw stderr about
+                // an unsupported multi-frame-to-single-frame conversion.
+                const inputBuffer = fs.readFileSync(inputPath);
+                const sig = inputBuffer.toString('ascii', 0, 6);
+                if (sig === 'GIF89a' || sig === 'GIF87a') {
+                    throw new Error(
+                        `build aborted: loose-assets/${relPath} is a static raster target (${targetResourcesPath}) — ` +
+                        `an animated GIF can't replace it (there's no SWF timeline here to animate). Supply a static PNG instead.`
+                    );
+                }
                 autoFitPng(inputPath, outputPath, meta.widthPx, meta.heightPx);
             } else {
                 // MP3: plain passthrough, no conversion.
@@ -134,11 +159,25 @@ if (!fs.existsSync(MXMLC)) {
     process.exit(1);
 }
 
-// Verify ffdec exists (needed for assets/ conversion and the loose-assets/
-// overlay, both below).
-if (!fs.existsSync(FFDEC_JAR)) {
-    console.error(`ffdec.jar not found at ${FFDEC_JAR}`);
-    process.exit(1);
+// ffdec and ffmpeg are only needed to convert a mod's assets/ or
+// loose-assets/ files — a zero-mod build (or a mod set with no such files)
+// never touches either tool, so the check is deferred until we actually
+// know at least one enabled mod ships something needing conversion, rather
+// than being an unconditional hard requirement for every build. See
+// docs/known-issues.md and README.md's Requirements section.
+function checkFfdecAvailable() {
+    if (!fs.existsSync(FFDEC_JAR)) {
+        console.error(`ffdec.jar not found at ${FFDEC_JAR} — needed to convert a mod's assets/ or loose-assets/ files (see docs/known-issues.md)`);
+        process.exit(1);
+    }
+}
+function checkFfmpegAvailable() {
+    try {
+        execFileSync('/bin/sh', ['-c', 'command -v ffmpeg'], { stdio: 'ignore' });
+    } catch (e) {
+        console.error('ffmpeg not found on PATH — needed to convert a mod\'s assets/ or loose-assets/ files (see README.md Requirements)');
+        process.exit(1);
+    }
 }
 
 // Read manifest
@@ -171,6 +210,17 @@ if (enabledModIds.length > 0) {
         console.error('\nMod validation failed — build aborted:');
         for (const e of validationErrors) console.error('  ' + e);
         process.exit(1);
+    }
+
+    // Only require ffdec/ffmpeg once we know at least one enabled mod
+    // actually ships assets/ or loose-assets/ files that need converting —
+    // a mod that only touches src/ or data/ never needs either tool.
+    const needsConversionTools = modManifests.some((m) =>
+        fs.existsSync(path.join(m._dir, 'assets')) || fs.existsSync(path.join(m._dir, 'loose-assets'))
+    );
+    if (needsConversionTools) {
+        checkFfdecAvailable();
+        checkFfmpegAvailable();
     }
 
     const touchSets = computeTouchSets(modManifests);
@@ -269,6 +319,10 @@ if (enabledModIds.length > 0) {
     buildLooseAssetsOverlay(inPriorityOrder);
 } else {
     writeModLoaderInfo([], '');
+    // Unconditional even in the zero-mod case: clears out any stale
+    // build/output/loose-assets/ (and its manifest) left over from a
+    // previous build that had loose-asset mods enabled.
+    buildLooseAssetsOverlay([]);
 }
 
 // Matches the real shipped SWF's header exactly (verified via swfdump):

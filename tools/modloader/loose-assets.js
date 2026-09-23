@@ -260,9 +260,22 @@ function buildFlipbookSwf(framePaths, widthPx, heightPx, frameRate, loopForever,
         '<backgroundColor type="RGB" blue="0" green="0" red="0"/></item>'
     );
 
-    framePaths.forEach((framePath, idx) => {
-        const bitmapId = idx * 2 + 1;
-        const shapeId = idx * 2 + 2;
+    // Emit one DefineBitsLosslessTag + one DefineShapeTag per UNIQUE frame
+    // path, not once per entry in framePaths. prepareFrames intentionally
+    // pushes the SAME fitted PNG path multiple times to represent a GIF
+    // frame's held duration (e.g. [f1, f1, f1, f2] for a frame held 3 output
+    // ticks then a second frame held 1) — re-encoding/re-deflating and
+    // defining a brand-new bitmap+shape pair per repeated entry bloated the
+    // output far beyond what the actual distinct frame content needs. Each
+    // OUTPUT frame still gets its own PlaceObject2Tag+ShowFrameTag pair
+    // (that's what actually drives the timeline/timing), just referencing
+    // the one shared character definition for repeats.
+    const shapeIdByFramePath = new Map();
+    let nextCharacterId = 1;
+    for (const framePath of framePaths) {
+        if (shapeIdByFramePath.has(framePath)) continue;
+        const bitmapId = nextCharacterId++;
+        const shapeId = nextCharacterId++;
         const argb = pngToArgb(framePath);
         const zlibHex = zlib.deflateSync(argb).toString('hex');
 
@@ -292,6 +305,11 @@ function buildFlipbookSwf(framePaths, widthPx, heightPx, frameRate, loopForever,
             '<item type="EndShapeRecord" endOfShape="0"/>' +
             '</shapeRecords></shapes></item>'
         );
+        shapeIdByFramePath.set(framePath, shapeId);
+    }
+
+    framePaths.forEach((framePath, idx) => {
+        const shapeId = shapeIdByFramePath.get(framePath);
         tagItems.push(
             `<item type="PlaceObject2Tag" characterId="${shapeId}" depth="1" forceWriteAsLong="false" ` +
             'placeFlagHasCharacter="true" placeFlagHasClipActions="false" placeFlagHasClipDepth="false" ' +
@@ -312,7 +330,7 @@ function buildFlipbookSwf(framePaths, widthPx, heightPx, frameRate, loopForever,
     }
 
     const xml = '<?xml version="1.0" encoding="UTF-8"?>' +
-        `<swf _xmlExportMajor="2" _xmlExportMinor="2" type="SWF" charset="UTF-8" compression="NONE" ` +
+        `<swf _xmlExportMajor="2" _xmlExportMinor="2" type="SWF" charset="UTF-8" compression="ZLIB" ` +
         `encrypted="false" frameCount="${framePaths.length}" frameRate="${frameRate}" gfx="false" ` +
         'hasEndTag="true" version="9">' +
         `<displayRect type="RECT" Xmax="${wt}" Xmin="0" Ymax="${ht}" Ymin="0" nbits="${rectBits}"/>` +
@@ -321,6 +339,26 @@ function buildFlipbookSwf(framePaths, widthPx, heightPx, frameRate, loopForever,
 
     execFileSync('java', ['-jar', ffdecJarPath, '-xml2swf', seedXml, outSwfPath], { stdio: 'pipe' });
     fs.rmSync(workDir, { recursive: true, force: true });
+}
+
+// Resolves a modder's loose-assets/ relative path (as authored, e.g.
+// "SWF/SHIP1.png", "PNG/OP1.png", or "MP3/zinn.mp3") to the actual
+// Resources/-relative target path it will end up overwriting: PNG-folder
+// targets keep ".PNG", SWF-folder targets always become ".SWF" regardless
+// of whether the modder's input was a PNG or a GIF, and everything else
+// (MP3) keeps its own extension. The result is upper-cased end-to-end so
+// two mods whose declared source paths differ only in extension or casing
+// but resolve to the same real file (e.g. "SWF/SHIP1.png" vs.
+// "SWF/SHIP1.gif", or "MP3/zinn.mp3" vs. "MP3/ZINN.MP3") are recognized as
+// the same target — both by build.js's reference-manifest lookup and by
+// mods.js's conflict detection. Shared by both call sites so they can never
+// drift apart.
+function resolveLooseAssetTargetPath(relPath) {
+    const normalized = relPath.replace(/\\/g, '/');
+    const targetPath = normalized.replace(/\.(png|gif)$/i, () =>
+        /^PNG\//i.test(normalized) ? '.PNG' : '.SWF'
+    );
+    return targetPath.toUpperCase();
 }
 
 function isSwf(buffer) {
@@ -364,5 +402,6 @@ function convertAsset(inputPath, originalAssetPath, outputPath, ffdecJarPath) {
 }
 
 module.exports = {
-    readPngDimensions, readGifMeta, readSwfStageInfo, prepareFrames, buildFlipbookSwf, convertAsset, autoFitPng
+    readPngDimensions, readGifMeta, readSwfStageInfo, prepareFrames, buildFlipbookSwf, convertAsset, autoFitPng,
+    resolveLooseAssetTargetPath
 };

@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { resolveLooseAssetTargetPath } = require('./loose-assets');
 
 function loadEnabledMods(rootDir) {
     const enabledPath = path.join(rootDir, 'mods', 'enabled.json');
@@ -54,7 +55,14 @@ function computeTouchSets(manifests) {
     for (const m of manifests) {
         const set = new Set(m.touches?.classes || []);
         for (const a of m.touches?.assets || []) set.add('asset:' + a);
-        for (const la of m.touches?.looseAssets || []) set.add('looseAsset:' + la);
+        // Normalized to the RESOLVED target path (same helper build.js's
+        // buildLooseAssetsOverlay uses), not the modder's declared source
+        // path verbatim: two mods declaring e.g. "SWF/SHIP1.png" and
+        // "SWF/SHIP1.gif" both actually overwrite the same real file,
+        // "SWF/SHIP1.SWF" — without this normalization they'd get different
+        // touch-set keys and the conflict/priority-suppression system would
+        // never catch the overlap.
+        for (const la of m.touches?.looseAssets || []) set.add('looseAsset:' + resolveLooseAssetTargetPath(la));
         for (const d of m.touches?.data || []) {
             const dataPath = m._dir ? path.join(m._dir, 'data', d) : null;
             const parsed = dataPath && fs.existsSync(dataPath) ? readJsonObjectSafe(dataPath) : null;
