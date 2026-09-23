@@ -56,6 +56,18 @@ and its linked catalogs):
 
 ### Conversion core: template-reuse via `ffdec -importImages`/`-importSprites`
 
+> **Correction (post-implementation):** the mechanism actually shipped is
+> **not** this section's `-importImages`/`-importSprites` template-editing
+> approach — it turned out not to render correctly (see the plan doc's
+> Task 4 for the full investigation). What ships instead is flipbook
+> synthesis via `ffdec -swf2xml`/`-xml2swf`: a fresh minimal SWF is built
+> from scratch (one bitmap+shape definition per frame, placed and shown per
+> frame via a hand-authored XML tag tree), not an edited copy of the
+> original template. See
+> `docs/superpowers/plans/2026-09-20-modder-asset-pipeline.md`'s Task 4 for
+> the corrected design and rationale; the rest of this section is kept for
+> history but should not be read as the implemented behavior.
+
 For every SWF-shaped target (vector `[Embed]` assets and all loose
 `SWF/` files), the **original asset being overridden is the template**.
 Conversion is: decode the modder's image/GIF frames to raw bitmaps, then

@@ -7,9 +7,12 @@ the compiled game and cross-referenced against the decompiled source
 (`engine/src/*.as`). Use it to find your asset: look it up by name or category
 in the tables below or in one of the five detail docs, note the file path
 listed for it, and follow `docs/modding-guide.md` to override it in your own
-mod. Every asset below can be overridden — see `docs/modding-guide.md`'s
-`assets/`/`loose-assets/` sections for how, depending on which kind it is
-(noted in each catalog's "Overridable today?" column). The thumbnail images
+mod. Most asset categories below can be overridden — see
+`docs/modding-guide.md`'s `assets/`/`loose-assets/` sections for how,
+depending on which kind it is (the "Overridable today?" column in the
+Summary table below; the one exception is loose pre-build resources, marked
+N/A there — see that row for why). The individual per-category catalog docs
+don't repeat this column themselves. The thumbnail images
 throughout this wiki and its companion docs are the original game's
 copyrighted art, extracted here for cataloging purposes only — the same
 precedent already established for the checked-in originals under

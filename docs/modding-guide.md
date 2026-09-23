@@ -8,9 +8,10 @@ data, or asset overrides it needs.
 ```
 mods/your-mod-name/
   mod.json
-  src/...      # full-file class replacements or new classes
-  data/...     # JSON value overrides
-  assets/...   # drop-in replacement art/audio
+  src/...           # full-file class replacements or new classes
+  data/...          # JSON value overrides
+  assets/...        # drop-in replacement art/audio (compiled in)
+  loose-assets/...  # drop-in replacement art/audio (loaded from disk at runtime)
 ```
 
 ## `mod.json`
@@ -62,24 +63,36 @@ message instead of compiling against an engine it wasn't written for.
   opponent portraits — see `docs/asset-wiki.md` for the full list). Paths
   mirror the game's own `Resources/` layout (e.g.
   `loose-assets/SWF/SHIP1.png` overrides the first ship's art,
-  `loose-assets/SWF/ZINN2_N.gif` overrides an animated NPC). You never
-  need to know the original's pixel dimensions — the build auto-fits your
-  image. An animated GIF's loop count controls whether the in-game
-  animation loops forever or plays once; frame timing is preserved as
-  closely as the output's frame rate allows. Declare every file you add
-  under `touches.looseAssets` in `mod.json`, same validation rules as
-  `touches.assets`.
+  `loose-assets/SWF/ZINN2_N.gif` overrides an animated NPC). MP3/audio
+  overrides work the same way — drop a replacement file at e.g.
+  `loose-assets/MP3/ZINN.mp3` for a plain passthrough copy, no conversion
+  needed. You never need to know the original's pixel dimensions — the
+  build auto-fits your image. An animated GIF's loop count controls
+  whether the in-game animation loops forever or plays once; frame timing
+  is preserved as closely as the output's frame rate allows. Filenames are
+  matched against the asset wiki's catalog case-insensitively, but the rest
+  of the path (the `SWF`/`PNG`/`MP3` folder name) should still match the
+  catalog's own casing. Declare every file you add under
+  `touches.looseAssets` in `mod.json`, same validation rules as
+  `touches.assets`. Converting these (and `assets/`) overrides requires
+  `ffdec` and `ffmpeg` to be installed on the build machine — see
+  `README.md`'s Requirements section and
+  [`docs/known-issues.md`](known-issues.md#build-requirement-ffdec-jpexs-free-flash-decompiler-and-ffmpeg).
+  Like the main SWF patch, loose-asset overrides only take effect on your
+  actual game install after you re-run `tools/installer/install.sh`.
 
 ## Finding an asset to override
 
-Before writing an `assets/` override, look up the asset in
-[`docs/asset-wiki.md`](asset-wiki.md) — it catalogs every named, findable
-asset in the game (planets, HUD icons, GUI chrome, ships, NPCs, sounds, and
-more) with its exact file path and a thumbnail where applicable. It also
-notes which asset channels are overridable today via the mechanism above and
-which aren't yet (loose `.swf`/`.png`/`.mp3` files loaded by runtime
-filesystem path need a different pipeline — see that doc's "Known gaps"
-section).
+Before writing an `assets/` or `loose-assets/` override, look up the asset
+in [`docs/asset-wiki.md`](asset-wiki.md) — it catalogs every named,
+findable asset in the game (planets, HUD icons, GUI chrome, ships, NPCs,
+sounds, and more) with its exact file path and a thumbnail where
+applicable. It also notes which mechanism overrides each asset channel: the
+compiled-in `assets/` overlay for `[Embed]`-based assets, or the
+runtime-loaded `loose-assets/` overlay for the loose `.swf`/`.png`/`.mp3`
+files the game loads by filesystem path (ships, named NPCs, planet-surface
+art, opponent portraits, and sound effects — see that doc's "Known gaps"
+section for the full rundown of what's covered).
 
 ## Enabling mods
 

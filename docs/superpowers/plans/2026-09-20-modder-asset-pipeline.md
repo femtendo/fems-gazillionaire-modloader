@@ -974,6 +974,8 @@ Call `buildLooseAssetsOverlay(inPriorityOrder)` from the same place the existing
 
 **Note for the implementer:** `engine/loose-assets-manifest.json` doesn't exist yet — generating it (one entry per cataloged loose asset, `{widthPx, heightPx, frameRate}` from `ffdec -header` against each real file in a Steam install) is a one-time data-collection task, not code. Do it as part of this task's Step 4 using the real install path already used throughout this session's cataloging work, and commit the resulting JSON (metadata only, not art — no copyright concern, matches this repo's existing precedent of shipping metadata/thumbnails but not full original art files in bulk... actually thumbnails ARE full art per this session's earlier decision; either is fine, this file is tiny numeric metadata regardless).
 
+**Regenerating later:** if a loose-asset target is ever missing (a new one gets added to a future game update, or an entry was mistyped) or the file needs rebuilding from scratch, re-run `ffdec -header <path>` against the real file(s) in a Steam install and add/update the corresponding `{widthPx, heightPx, frameRate}` entry — keyed by the upper-cased `Resources/`-relative path (e.g. `"SWF/SHIP1.SWF"`), matching what `resolveLooseAssetTargetPath` in `tools/modloader/loose-assets.js` produces. There's no script for this; it's the same manual one-time process described above, just re-run per-entry as needed.
+
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `bash tests/modloader/build-integration.test.sh`

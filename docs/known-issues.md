@@ -17,6 +17,41 @@ backup / patch all work, then `install.sh restore --target ...` to confirm
 restore. Until that happens, treat Windows support as unverified, not
 broken.
 
+## Build requirement: `ffdec` (JPEXS Free Flash Decompiler) and `ffmpeg`
+
+`tools/modloader/build.js` shells out to `ffdec` (for reading a SWF's own
+header dimensions/frame-rate and for `-swf2xml`/`-xml2swf` flipbook
+synthesis) and `ffmpeg` (for GIF frame extraction and PNG resize/pad) any
+time an enabled mod ships `assets/` or `loose-assets/` files. Neither tool
+is fetched by `tools/fetch-sdk.sh` — install them yourself:
+
+- `ffdec`: download JPEXS Free Flash Decompiler and place `ffdec.jar` at
+  `~/tools/ffdec/ffdec.jar` (the path this project's tooling hardcodes;
+  `tools/.sdk/`/`tools/.local/` are gitignored/untracked, so there's no
+  fetch script for it).
+- `ffmpeg`: install via your platform's usual package manager (e.g.
+  `brew install ffmpeg`) so it's on `PATH`.
+
+A build with no mods enabled, or whose enabled mods only touch `src/`/
+`data/`, needs neither tool — `build.js` only checks for them once it knows
+at least one enabled mod actually has an `assets/` or `loose-assets/`
+folder to convert.
+
+## Unverified: whether the real game executes a synthesized flipbook's `stop()` correctly
+
+`buildFlipbookSwf` (`tools/modloader/loose-assets.js`) emits a
+`DoActionTag` with raw AS1/2 bytecode (`ActionStop` + `ActionEnd`) on the
+last frame of a non-looping flipbook, and `tests/modloader/loose-assets.test.js`
+confirms via `ffdec -swf2xml` that the tag really is present in the written
+SWF with the expected bytecode. What's **not** verified is whether the
+actual Gazillionaire/AIR runtime executes that bytecode as intended once
+the synthesized SWF is loaded in-game — `ffdec`'s own tooling can only
+disassemble/reassemble SWFs, it can't execute ActionScript, so there's no
+way to confirm the stop-on-last-frame behavior in this environment. If a
+non-looping loose-asset override (an animated GIF with a finite loop count)
+appears to keep looping in-game instead of stopping, this is the first
+place to look.
+
 ## Resolved: Zero-mod baseline compiles AND boots
 
 The full 156-file decompiled tree recompiles cleanly with `node

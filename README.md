@@ -19,6 +19,12 @@ backup of the original file.
 
 - A legitimate Steam copy of Gazillionaire (macOS or Windows).
 - Java (for the build tooling).
+- [`ffdec`](docs/known-issues.md#build-requirement-ffdec-jpexs-free-flash-decompiler-and-ffmpeg)
+  (JPEXS Free Flash Decompiler) at `~/tools/ffdec/ffdec.jar` — only needed
+  if any enabled mod ships `assets/` or `loose-assets/` overrides.
+- [`ffmpeg`](docs/known-issues.md#build-requirement-ffdec-jpexs-free-flash-decompiler-and-ffmpeg)
+  on your `PATH` — only needed for that same case (image/GIF conversion for
+  `assets/`/`loose-assets/` overrides).
 
 ## Installation
 
