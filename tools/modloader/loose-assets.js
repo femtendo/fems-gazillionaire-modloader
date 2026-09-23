@@ -170,7 +170,17 @@ function prepareFrames(inputPath, targetWidthPx, targetHeightPx, targetFrameRate
     // delay array and frame array to line up exactly).
     const rawDir = path.join(workDir, 'raw-gif-frames');
     fs.mkdirSync(rawDir, { recursive: true });
-    execFileSync('ffmpeg', ['-y', '-i', inputPath, path.join(rawDir, 'raw_%04d.png')], { stdio: 'pipe' });
+    // -fps_mode passthrough (output-side option, must come after -i) forces
+    // ffmpeg to emit exactly one PNG per decoded GIF frame. Without it,
+    // ffmpeg defaults to resampling to the container's tbr, which for many
+    // real-world GIFs is a multiple of the true frame rate (e.g. 2x) and
+    // silently duplicates frames — tripping the frame-count guard below on
+    // otherwise-valid GIFs.
+    execFileSync(
+        'ffmpeg',
+        ['-y', '-i', inputPath, '-fps_mode', 'passthrough', path.join(rawDir, 'raw_%04d.png')],
+        { stdio: 'pipe' }
+    );
     const rawFrameFiles = fs.readdirSync(rawDir).filter((f) => f.startsWith('raw_')).sort();
 
     if (rawFrameFiles.length !== frameDelaysCs.length) {

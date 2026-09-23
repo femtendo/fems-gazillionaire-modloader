@@ -193,6 +193,49 @@ const { execFileSync } = require('child_process');
     }
 }
 
+{
+    // Regression test for the ffmpeg tbr-doubling bug: without -fps_mode
+    // passthrough, ffmpeg extracts frames at a real GIF's container tbr
+    // instead of its true frame rate. For odd frame counts at a delay that
+    // doesn't divide evenly into typical timebases (e.g. 7 frames at 7cs =
+    // 100/7 fps, mirroring a real-world 853x973 GIF that hit this exact
+    // bug), ffmpeg's tbr comes out at 2x the true rate, so plain
+    // `ffmpeg -i in.gif raw_%04d.png` silently duplicates every frame.
+    // Rather than hand-rolling GIF bytes (readGifMeta's header-only parser
+    // doesn't care about real pixel/LZW data, but prepareFrames actually
+    // shells out to ffmpeg to decode frames, so a fixture needs to be a
+    // real, ffmpeg-decodable GIF), we use ffmpeg itself — already a
+    // conditional dependency of this test file — to synthesize one: 7
+    // distinct-colored frames at 100/7 fps. This was verified by hand to
+    // reproduce the exact bug (14 raw frames instead of 7) before the
+    // -fps_mode passthrough fix was added to prepareFrames, and to produce
+    // exactly 7 after it.
+    if (fsMod.existsSync('/opt/homebrew/bin/ffmpeg') || (() => { try { execFileSync('which', ['ffmpeg']); return true; } catch { return false; } })()) {
+        const workDir = fsMod.mkdtempSync(pathMod.join(osMod.tmpdir(), 'loose-assets-tbr-test-'));
+        const gifPath = pathMod.join(workDir, 'synth.gif');
+        execFileSync(
+            'ffmpeg',
+            ['-y', '-f', 'lavfi', '-i', 'testsrc=size=32x32:rate=100', '-vf', 'fps=100/7', '-frames:v', '7', gifPath],
+            { stdio: 'pipe' }
+        );
+
+        const { readGifMeta: readGifMetaForTbrTest } = require('../../tools/modloader/loose-assets');
+        const meta = readGifMetaForTbrTest(fsMod.readFileSync(gifPath));
+        assert.strictEqual(meta.frameDelaysCs.length, 7, 'sanity: synthesized GIF should declare 7 frames');
+
+        const { framePaths } = prepareFrames(gifPath, 32, 32, 24, workDir);
+        const distinctFrames = new Set(framePaths).size;
+        assert.strictEqual(
+            distinctFrames, 7,
+            `prepareFrames should extract exactly 7 base frames (one per real GIF frame), got ${distinctFrames} — ` +
+            'this indicates ffmpeg is duplicating frames to match container tbr instead of the true frame rate'
+        );
+        console.log('prepareFrames (ffmpeg tbr-doubling regression): passed —', distinctFrames, 'distinct base frames');
+    } else {
+        console.log('prepareFrames (ffmpeg tbr-doubling regression): skipped (ffmpeg not installed on this machine)');
+    }
+}
+
 const { buildFlipbookSwf } = require('../../tools/modloader/loose-assets');
 
 if (fsMod.existsSync(FFDEC_JAR)) {
