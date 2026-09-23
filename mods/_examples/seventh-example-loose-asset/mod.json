@@ -1,0 +1,13 @@
+{
+  "id": "seventh-example",
+  "name": "Seventh Example (Loose Asset Override)",
+  "version": "1.0.0",
+  "engineCompat": ">=0.1.0",
+  "touches": {
+    "classes": [],
+    "data": [],
+    "assets": [],
+    "looseAssets": ["SWF/SHIP1.png"]
+  },
+  "priority": 0
+}

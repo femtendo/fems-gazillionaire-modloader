@@ -24,7 +24,8 @@ mods/your-mod-name/
   "touches": {
     "classes": ["fully.qualified.ClassName"],
     "data": ["path/to/data/file.json"],
-    "assets": ["path/to/asset.png"]
+    "assets": ["path/to/asset.png"],
+    "looseAssets": ["path/to/loose-asset.png"]
   },
   "priority": 0
 }
@@ -56,6 +57,18 @@ message instead of compiling against an engine it wasn't written for.
   `data/balance.json` as long as they set different top-level keys. Only a
   mod's actual JSON *keys* matter for conflict detection, not the whole
   file, so `touches.data` conflicts are reported per key.
+- **`loose-assets/`** — PNG or GIF overrides for assets the game loads
+  from disk at runtime rather than compiling in (ships, named NPCs,
+  opponent portraits — see `docs/asset-wiki.md` for the full list). Paths
+  mirror the game's own `Resources/` layout (e.g.
+  `loose-assets/SWF/SHIP1.png` overrides the first ship's art,
+  `loose-assets/SWF/ZINN2_N.gif` overrides an animated NPC). You never
+  need to know the original's pixel dimensions — the build auto-fits your
+  image. An animated GIF's loop count controls whether the in-game
+  animation loops forever or plays once; frame timing is preserved as
+  closely as the output's frame rate allows. Declare every file you add
+  under `touches.looseAssets` in `mod.json`, same validation rules as
+  `touches.assets`.
 
 ## Finding an asset to override
 
@@ -89,6 +102,7 @@ before writing your own:
 | `third-example-new-class` | Adding a brand new class the engine doesn't have |
 | `fourth-example-asset-override` | Overriding a drop-in asset (`assets/109.png`) |
 | `fifth-example-data-a` + `sixth-example-data-b` | Two mods merging disjoint keys of the same `data/balance.json` |
+| `seventh-example-loose-asset` | Overriding a loose runtime-loaded asset (ship art) |
 | `jerma985-mod` | Full-file class override at maximum coverage — every one of `GameStrings`'s ~3000 string values replaced, for stress-testing the text-override path |
 
 None of these are enabled by default — copy IDs into your own
