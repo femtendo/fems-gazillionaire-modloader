@@ -128,12 +128,22 @@ macOS code-signing step differ.
 "Two playable installers" = `install.sh` (macOS/Linux/Git-Bash) and
 `install.ps1` (native Windows), both driven off one build output.
 
-`tools/installer/windows/build-installer.sh` wraps `install.ps1` (plus
-its dependencies) into a double-clickable `GazillionaireOnlineSetup.exe`
-via NSIS, cross-compiled on macOS/Linux (`brew install nsis` — no Windows
-machine needed to produce it). The generated `Uninstall.exe` runs
-`install.ps1 restore`. Like `install.ps1` itself, this has been compiled
-and its logic reviewed, but not run on a real Windows machine.
+Two ways to hand `install.ps1` to a Windows tester without them cloning
+the repo, both built from macOS/Linux (no Windows machine needed):
+
+- `tools/installer/windows/build-portable-zip.sh` — `Install.bat`/
+  `Uninstall.bat` (self-elevating) plus `install.ps1` and its
+  dependencies, zipped. No compiled binary, so nothing for antivirus to
+  flag. **Recommended.**
+- `tools/installer/windows/build-installer.sh` — the same thing wrapped
+  as an NSIS `GazillionaireOnlineSetup.exe`/`Uninstall.exe`. In practice
+  Google Drive flagged this as a virus on first use — expected for an
+  unsigned binary that requests admin elevation (no code-signing
+  certificate available to fix that properly); prefer the zip unless a
+  "real" installer UI matters more than avoiding that false positive.
+
+Like `install.ps1` itself, both have been compiled/logic-reviewed but not
+run on a real Windows machine.
 
 ## Verification status
 

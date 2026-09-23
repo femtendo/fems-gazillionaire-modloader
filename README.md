@@ -32,13 +32,23 @@ backup of the original file.
 
 ## Installation
 
-### Windows — from a pre-built installer
+### Windows — from a pre-built package
 
-If someone already built `GazillionaireOnlineSetup.exe` for you (see
-below), just run it. It patches your local Steam copy and installs an
-`Uninstall.exe` alongside it — no Node/Java/SDK needed on your machine at
-all. Both `Setup` and `Uninstall` are wrappers around
-`tools/installer/install.ps1 install`/`restore`.
+If someone already built one of these for you, just run it — no
+Node/Java/SDK needed on your machine at all:
+
+- **`GazillionaireOnline-Windows.zip`** (recommended): unzip it, double-
+  click `Install.bat` (it self-elevates for you), later `Uninstall.bat`
+  to revert. Plain batch + PowerShell, no compiled binary — nothing for
+  antivirus/Google Drive to flag.
+- **`GazillionaireOnlineSetup.exe`**: same thing packaged as an NSIS
+  installer with an auto-generated `Uninstall.exe`. Being an unsigned
+  binary that requests admin, it's likely to get flagged as a false
+  positive by Drive/Defender/SmartScreen — the `.bat` zip avoids that
+  entirely, so prefer it unless you specifically want a "real" installer
+  UI.
+
+Both are wrappers around `tools/installer/install.ps1 install`/`restore`.
 
 ### From source (any platform)
 
@@ -51,11 +61,14 @@ all. Both `Setup` and `Uninstall` are wrappers around
    enabled in `mods/`).
 4. Run `tools/installer/install.sh` (macOS/Linux/Git Bash) or
    `tools/installer/install.ps1` (native Windows PowerShell) to patch your
-   local Steam installation directly, **or** run
+   local Steam installation directly, **or** package it for a Windows
+   tester who doesn't want to clone the repo:
+   `tools/installer/windows/build-portable-zip.sh` (needs `zip`, no other
+   deps — produces `GazillionaireOnline-Windows.zip`, recommended) or
    `tools/installer/windows/build-installer.sh` (needs `nsis`, e.g.
-   `brew install nsis`) to package the build into a double-clickable
-   `GazillionaireOnlineSetup.exe`/`Uninstall.exe` for a Windows tester who
-   doesn't want to touch PowerShell or clone the repo.
+   `brew install nsis` — produces `GazillionaireOnlineSetup.exe`, more
+   likely to trip antivirus false positives since it's an unsigned
+   binary).
 5. To play online: one player picks "Play Online" in-game, runs the relay
    (`node tools/multiplayer-server/relay.js`) somewhere everyone can reach,
    and shares the room code it prints. Everyone else picks "Play Online" →
