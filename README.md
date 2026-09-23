@@ -32,13 +32,30 @@ backup of the original file.
 
 ## Installation
 
+### Windows — from a pre-built installer
+
+If someone already built `GazillionaireOnlineSetup.exe` for you (see
+below), just run it. It patches your local Steam copy and installs an
+`Uninstall.exe` alongside it — no Node/Java/SDK needed on your machine at
+all. Both `Setup` and `Uninstall` are wrappers around
+`tools/installer/install.ps1 install`/`restore`.
+
+### From source (any platform)
+
 1. Clone this repo.
-2. Run `tools/fetch-sdk.sh` once to download the required build tools.
+2. Run `tools/fetch-sdk.sh` once to download the required build tools
+   (currently macOS-only — building from Windows/Linux isn't wired up yet,
+   but the *output* SWF is cross-platform, so build once on macOS and
+   distribute it).
 3. Run `tools/modloader/build.js` to build the base game (or with any mods
    enabled in `mods/`).
 4. Run `tools/installer/install.sh` (macOS/Linux/Git Bash) or
    `tools/installer/install.ps1` (native Windows PowerShell) to patch your
-   local Steam installation.
+   local Steam installation directly, **or** run
+   `tools/installer/windows/build-installer.sh` (needs `nsis`, e.g.
+   `brew install nsis`) to package the build into a double-clickable
+   `GazillionaireOnlineSetup.exe`/`Uninstall.exe` for a Windows tester who
+   doesn't want to touch PowerShell or clone the repo.
 5. To play online: one player picks "Play Online" in-game, runs the relay
    (`node tools/multiplayer-server/relay.js`) somewhere everyone can reach,
    and shares the room code it prints. Everyone else picks "Play Online" →

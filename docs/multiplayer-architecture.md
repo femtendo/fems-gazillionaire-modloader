@@ -128,6 +128,13 @@ macOS code-signing step differ.
 "Two playable installers" = `install.sh` (macOS/Linux/Git-Bash) and
 `install.ps1` (native Windows), both driven off one build output.
 
+`tools/installer/windows/build-installer.sh` wraps `install.ps1` (plus
+its dependencies) into a double-clickable `GazillionaireOnlineSetup.exe`
+via NSIS, cross-compiled on macOS/Linux (`brew install nsis` — no Windows
+machine needed to produce it). The generated `Uninstall.exe` runs
+`install.ps1 restore`. Like `install.ps1` itself, this has been compiled
+and its logic reviewed, but not run on a real Windows machine.
+
 ## Verification status
 
 - Compiles clean against the full 106K-line engine.
