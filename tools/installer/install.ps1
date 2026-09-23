@@ -30,7 +30,17 @@ $BuiltSwf = Join-Path $RootDir "build\output\gazillionaire-modded.swf"
 # available in this environment); pass -Target explicitly if this guess is
 # wrong for your Steam library location.
 if (-not $Target) {
-    $Target = Join-Path ${env:ProgramFiles(x86)} "Steam\steamapps\common\Gazillionaire\Gazillionaire.swf"
+    # ${env:ProgramFiles(x86)} has been observed to come back empty on a
+    # real Windows machine (likely running powershell.exe as a 32-bit
+    # process, where that variable isn't populated the same way) -
+    # Join-Path then throws instead of just producing a wrong path. Fall
+    # back to the standard literal, which is right far more often than the
+    # env var lookup fails.
+    $programFilesX86 = ${env:ProgramFiles(x86)}
+    if ([string]::IsNullOrEmpty($programFilesX86)) {
+        $programFilesX86 = "C:\Program Files (x86)"
+    }
+    $Target = Join-Path $programFilesX86 "Steam\steamapps\common\Gazillionaire\Gazillionaire.swf"
 }
 
 function Get-Sha256($path) {
