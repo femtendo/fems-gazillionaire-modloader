@@ -19,7 +19,18 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Bumped every time this file changes, and always printed first. If a bug
+# report doesn't match the version printed here, the fix already exists
+# but the report is from a stale copy of this script - re-download rather
+# than debug further.
+$ScriptVersion = "2026-09-23.2"
+Write-Host "install.ps1 version $ScriptVersion"
+
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ([string]::IsNullOrWhiteSpace($ScriptDir)) {
+    Write-Error "Could not determine this script's own folder (PowerShell gave back an empty path for `$MyInvocation.MyCommand.Path). Try running it by its full path instead of a relative one, e.g.: powershell -ExecutionPolicy Bypass -File `"C:\full\path\to\install.ps1`" $Command"
+    exit 1
+}
 $RootDir = Resolve-Path (Join-Path $ScriptDir "..\..")
 $Manifest = Join-Path $RootDir "engine\engine.manifest.json"
 $BuiltSwf = Join-Path $RootDir "build\output\gazillionaire-modded.swf"
