@@ -108,6 +108,7 @@ package
          addChild(this.statusLabel);
          NetworkClient.instance.addEventListener(NetworkEvent.ROOM_READY,this.onRoomReady);
          NetworkClient.instance.addEventListener(NetworkEvent.ERROR,this.onNetworkError);
+         NetworkClient.instance.addEventListener(NetworkEvent.PEER_LIST,this.onPeerList);
       }
 
       private function makeLabel(text:String) : Label
@@ -142,7 +143,7 @@ package
             // this machine's address (ipconfig on Windows) and the port
             // with whoever's joining, LAN or with it forwarded on your
             // router for over the internet.
-            this.statusLabel.text = "Hosting on port " + event.data.port + ". Share your address and this port, then pick your player count below.";
+            this.statusLabel.text = "Hosting on port " + event.data.port + ". If Windows Firewall just asked to allow this app, click Allow (both Private and Public) or guests can't reach you. Share your address and this port, then pick your player count below.";
          }
          else
          {
@@ -160,6 +161,23 @@ package
       private function onNetworkError(event:NetworkEvent) : void
       {
          this.statusLabel.text = "Error: " + event.data.message;
+      }
+
+      // Only meaningful for the host - fires once a guest's socket
+      // actually completes the connect+join handshake. Without this, a
+      // guest that never reaches the host (firewall silently dropping
+      // the inbound connection is the common case) leaves the host
+      // sitting on an unchanged "Hosting on port N" message forever, in
+      // directly the same way the guest's own connect can time out -
+      // the host side needs its own positive signal, not just an absence
+      // of errors, to tell "nobody has connected yet" apart from
+      // "a guest is in and setup can proceed."
+      private function onPeerList(event:NetworkEvent) : void
+      {
+         if(NetworkClient.instance.isHost)
+         {
+            this.statusLabel.text = "Guest connected (slot " + event.data.slot + "). If you were waiting and this just appeared, you're good - proceed to pick your player count.";
+         }
       }
 
       private function onClose(event:CloseEvent) : void
