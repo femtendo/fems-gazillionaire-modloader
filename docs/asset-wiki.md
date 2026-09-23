@@ -7,9 +7,15 @@ the compiled game and cross-referenced against the decompiled source
 (`engine/src/*.as`). Use it to find your asset: look it up by name or category
 in the tables below or in one of the five detail docs, note the file path
 listed for it, and follow `docs/modding-guide.md` to override it in your own
-mod. The thumbnail images throughout this wiki and its companion docs are the
-original game's copyrighted art, extracted here for cataloging purposes only —
-the same precedent already established for the checked-in originals under
+mod. Most asset categories below can be overridden — see
+`docs/modding-guide.md`'s `assets/`/`loose-assets/` sections for how,
+depending on which kind it is (the "Overridable today?" column in the
+Summary table below; the one exception is loose pre-build resources, marked
+N/A there — see that row for why). The individual per-category catalog docs
+don't repeat this column themselves. The thumbnail images
+throughout this wiki and its companion docs are the original game's
+copyrighted art, extracted here for cataloging purposes only — the same
+precedent already established for the checked-in originals under
 `engine/src/assets/`.
 
 ## Summary
@@ -17,10 +23,10 @@ the same precedent already established for the checked-in originals under
 | Category | Count | Where cataloged | Overridable today? |
 |---|---|---|---|
 | Main-SWF embedded assets (planets, HUD icons, GUI chrome, backgrounds, logo) | 98 table rows / 82 distinct files | [`asset-inventory.md`](asset-inventory.md) | **Yes** — `mods/<mod>/assets/<path>` overlay (`[Embed]`-based, see `docs/modding-guide.md`) |
-| External SWFs (ships, named NPCs/aliens, planet-surface art, cutscenes, title/splash screens) | 156 files | [`asset-wiki/external-swf-catalog.md`](asset-wiki/external-swf-catalog.md) | **No** — loaded at runtime by filesystem path (`SWF/<name>.SWF`), not `[Embed]`; needs a new override pipeline (see Known gaps) |
-| Loose PNGs (opponent/rival portraits, orphaned level-3 planet art, misc splash art) | 30 files | [`asset-wiki/loose-png-catalog.md`](asset-wiki/loose-png-catalog.md) | **No** — same runtime-path loading as external SWFs, needs a new pipeline |
+| External SWFs (ships, named NPCs/aliens, planet-surface art, cutscenes, title/splash screens) | 156 files | [`asset-wiki/external-swf-catalog.md`](asset-wiki/external-swf-catalog.md) | **Yes** — `mods/<mod>/loose-assets/SWF/<name>.png`\|`.gif` overlay (v0.5.1, see `docs/modding-guide.md`) |
+| Loose PNGs (opponent/rival portraits, orphaned level-3 planet art, misc splash art) | 30 files | [`asset-wiki/loose-png-catalog.md`](asset-wiki/loose-png-catalog.md) | **Yes** — `mods/<mod>/loose-assets/PNG/<name>.png` overlay |
 | Loose pre-build resources (leftover source-art duplicates + fuel-gauge-gap fix candidates) | 60 files | [`asset-wiki/loose-resources-catalog.md`](asset-wiki/loose-resources-catalog.md) | **N/A** — not loaded by the shipped game at all; 51/60 are duplicates of assets already overridable via the main-SWF channel above, the rest are gap-fix candidates or orphaned cut content (see Known gaps) |
-| Loose MP3s (sound effects, voice lines, per-planet/commodity jingles) | 175 files | [`asset-wiki/loose-mp3-catalog.md`](asset-wiki/loose-mp3-catalog.md) | **No** — same runtime-path loading, needs a new pipeline |
+| Loose MP3s (sound effects, voice lines, per-planet/commodity jingles) | 175 files | [`asset-wiki/loose-mp3-catalog.md`](asset-wiki/loose-mp3-catalog.md) | **Yes** — `mods/<mod>/loose-assets/MP3/<name>.mp3` overlay (plain passthrough, no conversion) |
 
 ## Detail docs
 
@@ -46,6 +52,14 @@ the same precedent already established for the checked-in originals under
   all 175 `.mp3` sound files under `Resources/MP3/`: UI sounds, gameplay SFX,
   voice lines, per-planet ambience, and per-commodity jingles. No thumbnails
   (not applicable to audio).
+- **[`asset-wiki/planets-catalog.md`](asset-wiki/planets-catalog.md)** — all
+  14 planets' assets in one place: the main-SWF icon, the level-2 turn-start
+  SWF, the dead-code level-3 PNG close-up, and the resources-folder
+  duplicate, organized by planet name instead of by source-file type.
+  Previously scattered across `asset-inventory.md`,
+  `asset-wiki/external-swf-catalog.md`, `asset-wiki/loose-png-catalog.md`,
+  and `asset-wiki/loose-resources-catalog.md` — those four docs now just
+  point here for planet rows.
 
 ## Known gaps
 
@@ -79,24 +93,27 @@ reread every doc to see what's still open:
      `COINS.MP3`, `EMAIL.MP3`, `LAVAMIND.MP3`, `MENTAL.MP3`, `PING2.MP3`,
      `PING4.MP3`, `SPIKE2.MP3`, `ZAP.MP3`.
 
-3. **Loose SWF/PNG/MP3 assets need a new override mechanism.** The three
-   loose-file channels (external SWFs, loose PNGs, loose MP3s — 361 files
-   total) are loaded by the game at runtime via filesystem path (literal
-   strings like `"./SWF/BANDITS.SWF"` or built dynamically, e.g.
-   `"SWF/" + baseName + suffix + ".SWF"`), **not** via AS3 `[Embed]`. The
-   modloader's existing `mods/<mod>/assets/<path>` overlay
-   (`tools/modloader/build.js`) only reaches `[Embed]`-based assets compiled
-   into the main SWF — it has no concept of overlaying a runtime-resolved
-   filesystem path in `Resources/SWF/`, `Resources/PNG/`, or `Resources/MP3/`.
-   Closing this gap needs a genuinely new pipeline (a resource-folder overlay
-   step in the build, most likely), not a wiki entry. `docs/asset-wiki-plan.md`
-   has the ship-art-specific plan (adding real `[Embed]`-backed per-ship asset
-   classes as a `Gazillionaire.as` code change, Step 2.2); a broader pipeline
-   design covering the general loose-file case is still pending as separate
-   work.
+3. **Resolved (v0.5.1): loose SWF/PNG/MP3 assets now have an override
+   mechanism.** The three loose-file channels (external SWFs, loose PNGs,
+   loose MP3s — 361 files total) are loaded by the game at runtime via
+   filesystem path (literal strings like `"./SWF/BANDITS.SWF"` or built
+   dynamically, e.g. `"SWF/" + baseName + suffix + ".SWF"`), not via AS3
+   `[Embed]`, so the pre-existing `mods/<mod>/assets/<path>` overlay never
+   reached them. A new `mods/<mod>/loose-assets/` overlay closes this: a
+   modder drops a PNG or (looping) GIF at the mirrored `Resources/`-relative
+   path, `tools/modloader/build.js` converts it (auto-fit to the original's
+   dimensions; for SWF targets, synthesizes a fresh flipbook SWF via
+   `ffdec swf2xml`/`xml2swf`, honoring the GIF's loop-count metadata), and
+   `tools/installer/install.sh` backs up and deploys the result into
+   `Resources/SWF|PNG|MP3/` alongside the existing main-SWF patch. See
+   `docs/superpowers/specs/2026-09-20-modder-asset-pipeline-design.md` for
+   the full design and `docs/modding-guide.md` for the modder-facing
+   how-to.
 
-4. **Ships have zero unique embedded art today** — there is no `Ship*Class.as`
-   anywhere in the decompiled source; the 12 ship-selection buttons are plain
-   styled Flex `Button`s with no icon property. The `SHIP*.SWF` files in the
-   external SWF catalog are the actual ship art, loaded by filesystem path —
-   see gap 3 above. `docs/asset-wiki-plan.md` Step 2.2 has the proposed fix.
+4. **Ships now have overridable art.** There is still no `Ship*Class.as` in
+   the decompiled source and the 12 ship-selection buttons are still plain
+   styled Flex `Button`s with no `[Embed]`-based icon — but the `SHIP*.SWF`
+   files in the external SWF catalog (the actual ship art, loaded by
+   filesystem path) are covered by the gap-3 fix above, so a modder can
+   already replace ship art via `loose-assets/SWF/SHIP<N>.png`\|`.gif`
+   without any `Gazillionaire.as` change.

@@ -8,9 +8,10 @@ data, or asset overrides it needs.
 ```
 mods/your-mod-name/
   mod.json
-  src/...      # full-file class replacements or new classes
-  data/...     # JSON value overrides
-  assets/...   # drop-in replacement art/audio
+  src/...           # full-file class replacements or new classes
+  data/...          # JSON value overrides
+  assets/...        # drop-in replacement art/audio (compiled in)
+  loose-assets/...  # drop-in replacement art/audio (loaded from disk at runtime)
 ```
 
 ## `mod.json`
@@ -24,7 +25,8 @@ mods/your-mod-name/
   "touches": {
     "classes": ["fully.qualified.ClassName"],
     "data": ["path/to/data/file.json"],
-    "assets": ["path/to/asset.png"]
+    "assets": ["path/to/asset.png"],
+    "looseAssets": ["path/to/loose-asset.png"]
   },
   "priority": 0
 }
@@ -56,17 +58,41 @@ message instead of compiling against an engine it wasn't written for.
   `data/balance.json` as long as they set different top-level keys. Only a
   mod's actual JSON *keys* matter for conflict detection, not the whole
   file, so `touches.data` conflicts are reported per key.
+- **`loose-assets/`** — PNG or GIF overrides for assets the game loads
+  from disk at runtime rather than compiling in (ships, named NPCs,
+  opponent portraits — see `docs/asset-wiki.md` for the full list). Paths
+  mirror the game's own `Resources/` layout (e.g.
+  `loose-assets/SWF/SHIP1.png` overrides the first ship's art,
+  `loose-assets/SWF/ZINN2_N.gif` overrides an animated NPC). MP3/audio
+  overrides work the same way — drop a replacement file at e.g.
+  `loose-assets/MP3/ZINN.mp3` for a plain passthrough copy, no conversion
+  needed. You never need to know the original's pixel dimensions — the
+  build auto-fits your image. An animated GIF's loop count controls
+  whether the in-game animation loops forever or plays once; frame timing
+  is preserved as closely as the output's frame rate allows. Filenames are
+  matched against the asset wiki's catalog case-insensitively, but the rest
+  of the path (the `SWF`/`PNG`/`MP3` folder name) should still match the
+  catalog's own casing. Declare every file you add under
+  `touches.looseAssets` in `mod.json`, same validation rules as
+  `touches.assets`. Converting these (and `assets/`) overrides requires
+  `ffdec` and `ffmpeg` to be installed on the build machine — see
+  `README.md`'s Requirements section and
+  [`docs/known-issues.md`](known-issues.md#build-requirement-ffdec-jpexs-free-flash-decompiler-and-ffmpeg).
+  Like the main SWF patch, loose-asset overrides only take effect on your
+  actual game install after you re-run `tools/installer/install.sh`.
 
 ## Finding an asset to override
 
-Before writing an `assets/` override, look up the asset in
-[`docs/asset-wiki.md`](asset-wiki.md) — it catalogs every named, findable
-asset in the game (planets, HUD icons, GUI chrome, ships, NPCs, sounds, and
-more) with its exact file path and a thumbnail where applicable. It also
-notes which asset channels are overridable today via the mechanism above and
-which aren't yet (loose `.swf`/`.png`/`.mp3` files loaded by runtime
-filesystem path need a different pipeline — see that doc's "Known gaps"
-section).
+Before writing an `assets/` or `loose-assets/` override, look up the asset
+in [`docs/asset-wiki.md`](asset-wiki.md) — it catalogs every named,
+findable asset in the game (planets, HUD icons, GUI chrome, ships, NPCs,
+sounds, and more) with its exact file path and a thumbnail where
+applicable. It also notes which mechanism overrides each asset channel: the
+compiled-in `assets/` overlay for `[Embed]`-based assets, or the
+runtime-loaded `loose-assets/` overlay for the loose `.swf`/`.png`/`.mp3`
+files the game loads by filesystem path (ships, named NPCs, planet-surface
+art, opponent portraits, and sound effects — see that doc's "Known gaps"
+section for the full rundown of what's covered).
 
 ## Enabling mods
 
@@ -89,6 +115,7 @@ before writing your own:
 | `third-example-new-class` | Adding a brand new class the engine doesn't have |
 | `fourth-example-asset-override` | Overriding a drop-in asset (`assets/109.png`) |
 | `fifth-example-data-a` + `sixth-example-data-b` | Two mods merging disjoint keys of the same `data/balance.json` |
+| `seventh-example-loose-asset` | Overriding a loose runtime-loaded asset (ship art) |
 | `jerma985-mod` | Full-file class override at maximum coverage — every one of `GameStrings`'s ~3000 string values replaced, for stress-testing the text-override path |
 
 None of these are enabled by default — copy IDs into your own

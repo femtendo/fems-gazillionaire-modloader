@@ -108,7 +108,7 @@ around from the original build tree.
 | b_x3_dn.swf | ![thumb](thumbnails/loose-resources/b_x3_dn.swf.png) | gui | 3x speed button — down state | `assets/96_..._dataClass.bin` | Identical duplicate |
 | b_x3_mo.swf | ![thumb](thumbnails/loose-resources/b_x3_mo.swf.png) | gui | 3x speed button — mouseover | `assets/106_..._dataClass.bin` | Identical duplicate |
 | b_x3_up.swf | ![thumb](thumbnails/loose-resources/b_x3_up.swf.png) | gui | 3x speed button — up state | `assets/119_..._dataClass.bin` | Identical duplicate |
-| BASS1.SWF | ![thumb](thumbnails/loose-resources/bass1.swf.png) | environment | Bass planet (level 1) | `assets/85_Gazillionaire_PlanetBass1Class_dataClass.bin` | `cmp`-identical |
+| n/a | — | environment | Planet assets consolidated | — | See [Planets](Asset-Wiki-Planets) / [planets-catalog.md](planets-catalog.md) — all 14 `<PLANET>1.SWF` resources-folder duplicate rows moved there, alongside each planet's other assets. |
 | busy_loading_bar.png | ![thumb](thumbnails/loose-resources/busy_loading_bar.png) | other | Loading splash banner | *(not found in Gazillionaire.as — likely native/AIR loader)* | Genuinely new to the catalog; "Gazillionaire! Loading..." banner |
 | f_empty.swf | ![thumb](thumbnails/loose-resources/f_empty.swf.png) | gui-chrome | Fuel gauge — empty track | `assets/84_..._dataClass.bin` | Identical duplicate |
 | f_endblue.swf | ![thumb](thumbnails/loose-resources/f_endblue.swf.png) | gui-chrome | Fuel gauge — blue end-cap | `assets/131_..._dataClass.bin` | Identical duplicate |
@@ -116,9 +116,7 @@ around from the original build tree.
 | f_fillblue.png | ![thumb](thumbnails/loose-resources/f_fillblue.png) | gui-chrome | **Fuel gauge — blue fill bar [GAP FIX candidate]** | `fuelFillBlue` CSS class, Gazillionaire.as ~76315 | **No embed exists to diff against** — filename + visual match strongly suggest this is the missing asset; light-blue-to-white gradient bar. Not copied into `engine/src/` — maintainer decision |
 | f_fillred.png | ![thumb](thumbnails/loose-resources/f_fillred.png) | gui-chrome | **Fuel gauge — red fill bar [GAP FIX candidate]** | `fuelFillRed` CSS class, Gazillionaire.as ~76285 | Same caveat as f_fillblue; red-to-white/orange gradient bar |
 | f_full.swf | ![thumb](thumbnails/loose-resources/f_full.swf.png) | gui-chrome | Fuel gauge — full track | `assets/98_..._dataClass.bin` | Identical duplicate |
-| FRAC1.SWF | ![thumb](thumbnails/loose-resources/frac1.swf.png) | environment | Frac planet (level 1) | `assets/133_..._dataClass.bin` | `cmp`-identical |
 | Frame_help3.swf | ![thumb](thumbnails/loose-resources/frame_help3.swf.png) | gui | Help frame border | `assets/156_..._dataClass.bin` | Identical duplicate |
-| HORK1.SWF | ![thumb](thumbnails/loose-resources/hork1.swf.png) | environment | Hork planet (level 1) | `assets/115_..._dataClass.bin` | `cmp`-identical |
 | i_arrow.swf | ![thumb](thumbnails/loose-resources/i_arrow.swf.png) | gui | Arrow icon | `assets/86_..._dataClass.bin` | Identical duplicate |
 | i_bank.png | ![thumb](thumbnails/loose-resources/i_bank.png) | gui | Bank icon | `assets/169_..._i_bank_png_....png` | Same art, re-encoded |
 | i_boy.png | ![thumb](thumbnails/loose-resources/i_boy.png) | gui | Boy icon | `assets/155_Gazillionaire_BoyIconClass.png` | Same art, re-encoded |
@@ -148,19 +146,8 @@ around from the original build tree.
 | i_warehouse.png | ![thumb](thumbnails/loose-resources/i_warehouse.png) | gui | Warehouse (open) icon | `assets/154.png` via `[Embed(source="assets/154.png")]` | Same art, re-encoded; gives `assets/154.png` a real name |
 | i_warehouse_closed.png | ![thumb](thumbnails/loose-resources/i_warehouse_closed.png) | gui | Warehouse (closed) icon | `assets/99_Gazillionaire_WarehouseClosedIconClass.png` | Same art, re-encoded |
 | i_zinn.png | ![thumb](thumbnails/loose-resources/i_zinn.png) | gui | Zinn icon | `assets/94_..._i_zinn_png_....png` | Same art, re-encoded |
-| LORO1.SWF | ![thumb](thumbnails/loose-resources/loro1.swf.png) | environment | Loro planet (level 1) | `assets/88_..._dataClass.bin` | `cmp`-identical |
-| MIRA1.SWF | ![thumb](thumbnails/loose-resources/mira1.swf.png) | environment | Mira planet (level 1) | `assets/173_..._dataClass.bin` | `cmp`-identical |
-| NOSH1.SWF | ![thumb](thumbnails/loose-resources/nosh1.swf.png) | environment | Nosh planet (level 1) | `assets/166_..._dataClass.bin` | `cmp`-identical |
-| OOOM1.SWF | ![thumb](thumbnails/loose-resources/ooom1.swf.png) | environment | Ooom planet (level 1) | `assets/110_..._dataClass.bin` | `cmp`-identical |
-| PYKE1.SWF | ![thumb](thumbnails/loose-resources/pyke1.swf.png) | environment | Pyke planet (level 1) | `assets/171_..._dataClass.bin` | `cmp`-identical |
-| QUEG1.SWF | ![thumb](thumbnails/loose-resources/queg1.swf.png) | environment | Queg planet (level 1) | `assets/125_..._dataClass.bin` | `cmp`-identical |
 | stars_bg_main.swf | ![thumb](thumbnails/loose-resources/stars_bg_main.swf.png) | background | Starfield background | `assets/108_..._dataClass.bin` | Identical duplicate |
 | stars_main.swf | ![thumb](thumbnails/loose-resources/stars_main.swf.png) | background | Starfield (main) | `assets/167_..._dataClass.bin` | Identical duplicate |
-| STYE1.SWF | ![thumb](thumbnails/loose-resources/stye1.swf.png) | environment | Stye planet (level 1) | `assets/105_..._dataClass.bin` | `cmp`-identical |
-| TILO1.SWF | ![thumb](thumbnails/loose-resources/tilo1.swf.png) | environment | Tilo planet (level 1) | `assets/148.bin` | `cmp`-identical (see finding #4 double-embed note) |
-| VEXX1.SWF | ![thumb](thumbnails/loose-resources/vexx1.swf.png) | environment | Vexx planet (level 1) | `assets/139.bin` | `cmp`-identical (see finding #4 double-embed note) |
-| XEEN1.SWF | ![thumb](thumbnails/loose-resources/xeen1.swf.png) | environment | Xeen planet (level 1) | `assets/138_..._dataClass.bin` | `cmp`-identical |
-| ZILE1.SWF | ![thumb](thumbnails/loose-resources/zile1.swf.png) | environment | Zile planet (level 1) | `assets/92_..._dataClass.bin` | `cmp`-identical |
 
 ## Thumbnails
 
