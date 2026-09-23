@@ -7,6 +7,8 @@ package
    import flash.net.Socket;
    import flash.utils.ByteArray;
    import flash.utils.Endian;
+   import flash.utils.clearTimeout;
+   import flash.utils.setTimeout;
 
    // Client for the multiplayer relay in tools/multiplayer-server/relay.js.
    // Frame format (must match the server): [1 byte type][4 byte BE length][payload].
@@ -22,6 +24,13 @@ package
 
       private static const HEADER_LEN:int = 5;
 
+      // flash.net.Socket has no built-in connect timeout - without this, a
+      // relay that isn't running/reachable (wrong address, firewall
+      // silently dropping packets rather than refusing the connection,
+      // nobody started tools/multiplayer-server/relay.js yet) leaves the
+      // lobby UI stuck on "Connecting..." indefinitely with no feedback.
+      private static const CONNECT_TIMEOUT_MS:int = 6000;
+
       private static var _instance:NetworkClient;
 
       public static function get instance() : NetworkClient
@@ -34,6 +43,8 @@ package
       }
 
       private var socket:Socket;
+
+      private var connectTimeoutId:uint = 0;
 
       private var recvBuffer:ByteArray;
 
@@ -107,6 +118,7 @@ package
 
       public function disconnect() : void
       {
+         clearConnectTimeout();
          if(socket != null && socket.connected)
          {
             socket.close();
@@ -132,11 +144,34 @@ package
          socket = new Socket();
          socket.addEventListener(Event.CONNECT, function(e:Event) : void
          {
+            clearConnectTimeout();
             onConnected();
          });
          socket.addEventListener(ProgressEvent.SOCKET_DATA, onSocketData);
          socket.addEventListener(IOErrorEvent.IO_ERROR, onSocketError);
          socket.connect(host, port);
+         connectTimeoutId = setTimeout(function() : void
+         {
+            connectTimeoutId = 0;
+            if(socket != null && socket.connected)
+            {
+               return;
+            }
+            if(socket != null)
+            {
+               socket.close();
+            }
+            dispatchEvent(new NetworkEvent(NetworkEvent.ERROR, null, {"message":"Could not connect to " + host + ":" + port + " within " + (CONNECT_TIMEOUT_MS / 1000) + "s. Is the relay running and reachable (tools/multiplayer-server/relay.js), and is the address/port correct?"}));
+         }, CONNECT_TIMEOUT_MS);
+      }
+
+      private function clearConnectTimeout() : void
+      {
+         if(connectTimeoutId != 0)
+         {
+            clearTimeout(connectTimeoutId);
+            connectTimeoutId = 0;
+         }
       }
 
       private function sendControl(msg:Object) : void
@@ -158,8 +193,9 @@ package
 
       private function onSocketError(e:IOErrorEvent) : void
       {
+         clearConnectTimeout();
          _isNetworked = false;
-         dispatchEvent(new NetworkEvent(NetworkEvent.ERROR, null, {"message":e.text}));
+         dispatchEvent(new NetworkEvent(NetworkEvent.ERROR, null, {"message":"Could not connect (" + e.text + "). Check the address/port and that the relay is running."}));
       }
 
       private function onSocketData(e:ProgressEvent) : void

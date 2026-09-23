@@ -37,7 +37,7 @@ if (-not $Target) {
     # back to the standard literal, which is right far more often than the
     # env var lookup fails.
     $programFilesX86 = ${env:ProgramFiles(x86)}
-    if ([string]::IsNullOrEmpty($programFilesX86)) {
+    if ([string]::IsNullOrWhiteSpace($programFilesX86)) {
         $programFilesX86 = "C:\Program Files (x86)"
     }
     $Target = Join-Path $programFilesX86 "Steam\steamapps\common\Gazillionaire\Gazillionaire.swf"
@@ -49,6 +49,10 @@ function Get-Sha256($path) {
 
 function Read-ManifestHash {
     $manifestJson = Get-Content -Raw -Path $Manifest | ConvertFrom-Json
+    if ([string]::IsNullOrWhiteSpace($manifestJson.officialSwfSha256)) {
+        Write-Error "officialSwfSha256 missing from $Manifest - repo/build is corrupt or out of date."
+        exit 1
+    }
     return $manifestJson.officialSwfSha256.ToLower()
 }
 

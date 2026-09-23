@@ -14,7 +14,13 @@
 
 Name "Gazillionaire Online"
 OutFile "GazillionaireOnlineSetup.exe"
-InstallDir "$LOCALAPPDATA\GazillionaireOnline"
+; $PROGRAMFILES (not $LOCALAPPDATA) - with RequestExecutionLevel admin, if
+; the UAC prompt is satisfied with a *different* admin account's
+; credentials than the one launching the installer, $LOCALAPPDATA
+; resolves to that other account's profile: the payload (including
+; Uninstall.exe) lands somewhere the original user can't find it.
+; $PROGRAMFILES is machine-wide and elevation-token-independent.
+InstallDir "$PROGRAMFILES\GazillionaireOnline"
 RequestExecutionLevel admin ; Steam's install dir (Program Files) needs elevation to write
 !define MUI_ABORTWARNING
 
