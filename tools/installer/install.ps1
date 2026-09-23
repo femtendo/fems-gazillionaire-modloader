@@ -23,17 +23,23 @@ $ErrorActionPreference = "Stop"
 # report doesn't match the version printed here, the fix already exists
 # but the report is from a stale copy of this script - re-download rather
 # than debug further.
-$ScriptVersion = "2026-09-23.2"
+$ScriptVersion = "2026-09-23.3"
 Write-Host "install.ps1 version $ScriptVersion"
 
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ScriptDir = [string](Split-Path -Parent $MyInvocation.MyCommand.Path)
 if ([string]::IsNullOrWhiteSpace($ScriptDir)) {
     Write-Error "Could not determine this script's own folder (PowerShell gave back an empty path for `$MyInvocation.MyCommand.Path). Try running it by its full path instead of a relative one, e.g.: powershell -ExecutionPolicy Bypass -File `"C:\full\path\to\install.ps1`" $Command"
     exit 1
 }
-$RootDir = Resolve-Path (Join-Path $ScriptDir "..\..")
-$Manifest = Join-Path $RootDir "engine\engine.manifest.json"
-$BuiltSwf = Join-Path $RootDir "build\output\gazillionaire-modded.swf"
+# Explicit [string] casts throughout this section: Resolve-Path returns a
+# PathInfo object, not a plain string, and relying on it auto-converting
+# everywhere it's later used (string interpolation, Join-Path, Test-Path)
+# is a well-known PowerShell foot-gun - forcing it to a real string once,
+# right here, removes an entire category of "which cmdlet's implicit
+# conversion behaves differently on this PowerShell version" uncertainty.
+$RootDir = [string](Resolve-Path (Join-Path $ScriptDir "..\.."))
+$Manifest = [string](Join-Path $RootDir "engine\engine.manifest.json")
+$BuiltSwf = [string](Join-Path $RootDir "build\output\gazillionaire-modded.swf")
 
 # Windows AIR captive-runtime installs put the SWF directly alongside the
 # .exe (no Resources/ bundle like the macOS .app), under the Steam library
@@ -47,12 +53,23 @@ if (-not $Target) {
     # Join-Path then throws instead of just producing a wrong path. Fall
     # back to the standard literal, which is right far more often than the
     # env var lookup fails.
-    $programFilesX86 = ${env:ProgramFiles(x86)}
+    $programFilesX86 = [string](${env:ProgramFiles(x86)})
     if ([string]::IsNullOrWhiteSpace($programFilesX86)) {
         $programFilesX86 = "C:\Program Files (x86)"
     }
-    $Target = Join-Path $programFilesX86 "Steam\steamapps\common\Gazillionaire\Gazillionaire.swf"
+    $Target = [string](Join-Path $programFilesX86 "Steam\steamapps\common\Gazillionaire\Gazillionaire.swf")
 }
+$Target = [string]$Target
+
+# Diagnostic trace: if a Join-Path/Resolve-Path call still fails somewhere
+# below despite the casts above, this prints BEFORE that happens, so a bug
+# report includes the actual type/value of every path this script derived
+# instead of just a bare exception with no context.
+Write-Host "ScriptDir=[$ScriptDir] ($($ScriptDir.GetType().Name))"
+Write-Host "RootDir=[$RootDir] ($($RootDir.GetType().Name))"
+Write-Host "Manifest=[$Manifest] ($($Manifest.GetType().Name))"
+Write-Host "BuiltSwf=[$BuiltSwf] ($($BuiltSwf.GetType().Name))"
+Write-Host "Target=[$Target] ($($Target.GetType().Name))"
 
 function Get-Sha256($path) {
     return (Get-FileHash -Path $path -Algorithm SHA256).Hash.ToLower()
@@ -68,16 +85,25 @@ function Read-ManifestHash {
 }
 
 $Backup = "$Target.original-backup"
-$LooseAssetsDir = Join-Path $RootDir "build\output\loose-assets"
-$LooseAssetsManifest = Join-Path $LooseAssetsDir "manifest.json"
-$ResourcesDir = Split-Path -Parent $Target
+$LooseAssetsDir = [string](Join-Path $RootDir "build\output\loose-assets")
+$LooseAssetsManifest = [string](Join-Path $LooseAssetsDir "manifest.json")
+$ResourcesDir = [string](Split-Path -Parent $Target)
 
 function Install-LooseAssets {
     if (-not (Test-Path $LooseAssetsManifest)) { return }
-    # @(...) forces an array even when the JSON has exactly one element  - 
+    # @(...) forces an array even when the JSON has exactly one element -
     # Windows PowerShell 5.1's ConvertFrom-Json otherwise collapses a
-    # single-element array to a scalar and silently skips the foreach body.
-    $paths = @(Get-Content -Raw -Path $LooseAssetsManifest | ConvertFrom-Json)
+    # single-element array to a scalar and silently skips the foreach
+    # body. But ConvertFrom-Json on an EMPTY array "[]" returns $null, not
+    # an empty array, and @($null) is a *one-element* array containing
+    # $null (not zero elements) - Where-Object strips that out so a
+    # build with no loose-asset overrides (an empty manifest, the common
+    # case) doesn't crash on Join-Path $ResourcesDir $null.
+    # The @(...) must wrap the WHOLE pipeline, not just ConvertFrom-Json's
+    # output - piping a single surviving element through Where-Object and
+    # assigning THAT result would collapse back to a scalar the same way,
+    # just one step later.
+    $paths = @(Get-Content -Raw -Path $LooseAssetsManifest | ConvertFrom-Json | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     foreach ($rel in $paths) {
         $dest = Join-Path $ResourcesDir $rel
         $destBackup = "$dest.original-backup"
@@ -96,7 +122,7 @@ function Install-LooseAssets {
 
 function Restore-LooseAssets {
     if (Test-Path $LooseAssetsManifest) {
-        $paths = @(Get-Content -Raw -Path $LooseAssetsManifest | ConvertFrom-Json)
+        $paths = @(Get-Content -Raw -Path $LooseAssetsManifest | ConvertFrom-Json | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         foreach ($rel in $paths) {
             $dest = Join-Path $ResourcesDir $rel
             $destBackup = "$dest.original-backup"
