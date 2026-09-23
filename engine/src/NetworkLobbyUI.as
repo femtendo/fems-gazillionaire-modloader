@@ -1,0 +1,151 @@
+package
+{
+   import flash.display.DisplayObject;
+   import flash.display.Sprite;
+   import flash.events.MouseEvent;
+   import flash.text.TextField;
+   import flash.text.TextFieldAutoSize;
+   import flash.text.TextFormat;
+   import mx.containers.TitleWindow;
+   import mx.controls.Button;
+   import mx.controls.Label;
+   import mx.controls.TextInput;
+   import mx.events.CloseEvent;
+   import mx.managers.PopUpManager;
+
+   // Standalone "Play Online" entry point. Deliberately built with plain
+   // Flex API calls (PopUpManager/TitleWindow) instead of touching the
+   // generated MXML-descriptor UI in Gazillionaire.as, which is far too
+   // large and fragile to hand-edit safely for a whole new screen.
+   // See docs/multiplayer-architecture.md.
+   public class NetworkLobbyUI extends TitleWindow
+   {
+
+      private var hostField:TextInput;
+
+      private var portField:TextInput;
+
+      private var codeField:TextInput;
+
+      private var slotField:TextInput;
+
+      private var statusLabel:Label;
+
+      // Adds a small always-visible "Play Online" corner button to the
+      // running app, without touching its declarative UI tree. Built from
+      // raw Sprite/TextField rather than mx.controls.Button: this runs at
+      // applicationComplete, before the Flex StyleManager has necessarily
+      // finished loading _Gazillionaire_Styles, so a themed halo Button
+      // was found (visually, via screenshot) to render nothing at all.
+      // Plain display-list drawing has no such dependency.
+      public static function attachTrigger(app:Object) : void
+      {
+         var button:Sprite = new Sprite();
+         button.graphics.beginFill(0x2255aa);
+         button.graphics.drawRect(0,0,90,20);
+         button.graphics.endFill();
+         var label:TextField = new TextField();
+         label.autoSize = TextFieldAutoSize.LEFT;
+         label.selectable = false;
+         label.mouseEnabled = false;
+         label.defaultTextFormat = new TextFormat("_sans",11,0xffffff,true);
+         label.text = "Play Online";
+         label.x = 6;
+         label.y = 3;
+         button.addChild(label);
+         button.buttonMode = true;
+         button.x = 8;
+         button.y = 8;
+         button.addEventListener(MouseEvent.CLICK,function(e:MouseEvent) : void
+         {
+            NetworkLobbyUI.show(app as DisplayObject);
+         });
+         app.rawChildren.addChild(button);
+      }
+
+      public static function show(parent:DisplayObject) : void
+      {
+         var lobby:NetworkLobbyUI = new NetworkLobbyUI();
+         PopUpManager.addPopUp(lobby,parent,true);
+         PopUpManager.centerPopUp(lobby);
+      }
+
+      public function NetworkLobbyUI()
+      {
+         super();
+         this.title = "Play Online";
+         this.showCloseButton = true;
+         this.width = 280;
+         this.height = 320;
+         this.addEventListener(CloseEvent.CLOSE,this.onClose);
+      }
+
+      override protected function createChildren() : void
+      {
+         super.createChildren();
+         var y:int = 10;
+         addChild(this.makeLabel("Server host:port (relay)"));
+         this.hostField = new TextInput();
+         this.hostField.text = "127.0.0.1";
+         addChild(this.hostField);
+         this.portField = new TextInput();
+         this.portField.text = "8642";
+         addChild(this.portField);
+         addChild(this.makeLabel("Room code (blank = host new game)"));
+         this.codeField = new TextInput();
+         addChild(this.codeField);
+         addChild(this.makeLabel("Your player slot (0-5)"));
+         this.slotField = new TextInput();
+         this.slotField.text = "0";
+         addChild(this.slotField);
+         var goButton:Button = new Button();
+         goButton.label = "Connect";
+         goButton.addEventListener(MouseEvent.CLICK,this.onConnect);
+         addChild(goButton);
+         this.statusLabel = new Label();
+         this.statusLabel.text = "";
+         addChild(this.statusLabel);
+         NetworkClient.instance.addEventListener(NetworkEvent.ROOM_READY,this.onRoomReady);
+         NetworkClient.instance.addEventListener(NetworkEvent.ERROR,this.onNetworkError);
+      }
+
+      private function makeLabel(text:String) : Label
+      {
+         var label:Label = new Label();
+         label.text = text;
+         return label;
+      }
+
+      private function onConnect(event:MouseEvent) : void
+      {
+         var host:String = this.hostField.text;
+         var port:int = int(this.portField.text);
+         var slot:int = int(this.slotField.text);
+         var code:String = this.codeField.text;
+         this.statusLabel.text = "Connecting...";
+         if(code == null || code.length == 0)
+         {
+            NetworkClient.instance.hostGame(host,port,slot);
+         }
+         else
+         {
+            NetworkClient.instance.joinGame(host,port,code,slot);
+         }
+      }
+
+      private function onRoomReady(event:NetworkEvent) : void
+      {
+         this.statusLabel.text = "Room code: " + event.data.code + " — waiting for other players.";
+      }
+
+      private function onNetworkError(event:NetworkEvent) : void
+      {
+         this.statusLabel.text = "Error: " + event.data.message;
+      }
+
+      private function onClose(event:CloseEvent) : void
+      {
+         PopUpManager.removePopUp(this);
+      }
+   }
+}

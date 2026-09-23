@@ -12,8 +12,12 @@ backup of the original file.
 - A mod loader that lets you stack multiple community mods (new ships, aliens,
   events, planets, resources, mechanics, art, and more) on top of the base
   game.
-- An online multiplayer layer that adds Steam friend invites and networked
-  play on top of the game's existing turn-based hotseat mode.
+- An online multiplayer layer that adds networked play on top of the game's
+  existing turn-based hotseat mode: one player hosts (a small relay server,
+  run locally or on any reachable box) and shares a room code with friends
+  however they'd normally talk to them — Steam chat included. See
+  `docs/multiplayer-architecture.md` for why this doesn't use the Steamworks
+  API directly (no SDK/AppID access to build a verified integration against).
 
 ## Requirements
 
@@ -32,15 +36,22 @@ backup of the original file.
 2. Run `tools/fetch-sdk.sh` once to download the required build tools.
 3. Run `tools/modloader/build.js` to build the base game (or with any mods
    enabled in `mods/`).
-4. Run `tools/installer/install.sh` to patch your local Steam installation.
+4. Run `tools/installer/install.sh` (macOS/Linux/Git Bash) or
+   `tools/installer/install.ps1` (native Windows PowerShell) to patch your
+   local Steam installation.
+5. To play online: one player picks "Play Online" in-game, runs the relay
+   (`node tools/multiplayer-server/relay.js`) somewhere everyone can reach,
+   and shares the room code it prints. Everyone else picks "Play Online" →
+   Join with that address and code.
 
-See `docs/modding-guide.md` for how to write your own mods, and
-`docs/architecture.md` for how the engine is organized.
+See `docs/modding-guide.md` for how to write your own mods,
+`docs/architecture.md` for how the engine is organized, and
+`docs/multiplayer-architecture.md` for how the network layer works.
 
 ## Uninstalling
 
-Run `tools/installer/install.sh restore` to revert to your original,
-unmodified game file.
+Run `tools/installer/install.sh restore` (or `install.ps1 restore` on
+Windows) to revert to your original, unmodified game file.
 
 ## Contributing
 

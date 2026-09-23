@@ -67028,6 +67028,17 @@ package
          var _loc2_:int = 0;
          var _loc3_:Number = NaN;
          var _loc4_:Boolean = false;
+         if(NetworkClient.instance.isNetworked && !NetworkClient.instance.isHost)
+         {
+            // Only the host advances shared game state (opponent AI and
+            // end-of-round bookkeeping use RNG, so only one client may run
+            // them). A guest reaching this point just finished its own
+            // turn locally; hand the result to the host and wait for the
+            // host's next broadcast. See docs/multiplayer-architecture.md.
+            NetworkClient.instance.publishTurn(this.g.serialize());
+            this.frm_Travel3_networkWait();
+            return;
+         }
          this.frm_Travel3_image.source = "SWF/WHITE_H.SWF";
          this.frm_Travel3_header.htmlText = "";
          this.frm_Travel3_text.htmlText = "";
@@ -67166,7 +67177,17 @@ package
             else if(this.g.p[_loc3_].bankrupt == false)
             {
                this.g.player = _loc3_;
-               this.mainCanvas.selectedChild = this.frm_PlayerTurn;
+               if(NetworkClient.instance.isNetworked && NetworkClient.instance.mySlots.indexOf(_loc3_) < 0)
+               {
+                  // This slot belongs to a remote player, not us (the
+                  // host). Hand off the state and wait for them to play.
+                  NetworkClient.instance.publishTurn(this.g.serialize());
+                  this.frm_Travel3_networkWait();
+               }
+               else
+               {
+                  this.mainCanvas.selectedChild = this.frm_PlayerTurn;
+               }
             }
             else
             {
@@ -67174,7 +67195,39 @@ package
             }
          }
       }
-      
+
+      // Shows the existing Travel3 screen in a "waiting for other
+      // players" state, reusing its components rather than adding new UI.
+      internal function frm_Travel3_networkWait() : void
+      {
+         this.frm_Travel3_image.source = "SWF/WHITE_H.SWF";
+         this.frm_Travel3_header.htmlText = "Online Game";
+         this.frm_Travel3_text.htmlText = "Waiting for other players’ turns...";
+         this.frm_Travel3_button_ok.visible = false;
+         this.frm_Travel3_txt_ok.visible = false;
+         this.mainCanvas.selectedChild = this.frm_Travel3;
+      }
+
+      // Fired by NetworkClient whenever a state blob arrives (either the
+      // host receiving a finished guest turn, or a guest receiving the
+      // host's broadcast of whose turn is next).
+      internal function frm_Travel3_onNetworkStateReceived(param1:NetworkEvent) : void
+      {
+         this.g.deserialize(param1.state);
+         if(NetworkClient.instance.isHost)
+         {
+            this.frm_Travel3_load();
+         }
+         else if(NetworkClient.instance.mySlots.indexOf(this.g.player) >= 0 && this.g.p[this.g.player].turnTaken == false)
+         {
+            this.mainCanvas.selectedChild = this.frm_PlayerTurn;
+         }
+         else
+         {
+            this.frm_Travel3_networkWait();
+         }
+      }
+
       internal function frm_Travel3_opponentTurn(param1:int) : Boolean
       {
          var _loc2_:int = 0;
@@ -71353,6 +71406,8 @@ package
          {
             this.init();
             this.title = "DIAG3-init-returned";
+            NetworkClient.instance.addEventListener(NetworkEvent.STATE_RECEIVED,this.frm_Travel3_onNetworkStateReceived);
+            NetworkLobbyUI.attachTrigger(this);
          }
          catch(e:Error)
          {
