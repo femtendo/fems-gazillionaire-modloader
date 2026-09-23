@@ -1,6 +1,6 @@
 @echo off
 REM Double-click installer: patches your local Steam copy of Gazillionaire.
-REM Plain batch + PowerShell, no compiled binary — unlike a packaged .exe,
+REM Plain batch + PowerShell, no compiled binary - unlike a packaged .exe,
 REM this has nothing for antivirus/Drive heuristics to flag as a false
 REM positive. See ../install.ps1 for the actual install/restore logic.
 

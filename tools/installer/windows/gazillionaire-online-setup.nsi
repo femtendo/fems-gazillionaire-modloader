@@ -1,12 +1,12 @@
-; Gazillionaire Online — Windows installer/uninstaller.
+; Gazillionaire Online - Windows installer/uninstaller.
 ; Wraps ../install.ps1 (install/restore) in a normal double-clickable
-; .exe. This does NOT install a new program — it patches an existing
+; .exe. This does NOT install a new program - it patches an existing
 ; legitimate Steam copy of Gazillionaire, same contract as install.sh on
 ; macOS. See docs/multiplayer-architecture.md.
 ;
 ; Built with NSIS (makensis) via build-installer.sh, which stages this
 ; script's payload/ directory before invoking it. Cross-compiled from
-; macOS/Linux — no Windows machine needed to produce the .exe, but it has
+; macOS/Linux - no Windows machine needed to produce the .exe, but it has
 ; NOT been run on a real Windows machine.
 
 !include "MUI2.nsh"
@@ -39,7 +39,7 @@ Section "Install"
   ${If} $0 != 0
     MessageBox MB_ICONSTOP|MB_OK "Install failed:$\r$\n$\r$\n$1$\r$\n$\r$\nIf Steam isn't installed at the default location, open PowerShell and run:$\r$\npowershell -ExecutionPolicy Bypass -File $\"$INSTDIR\tools\installer\install.ps1$\" install -Target $\"<path to your Gazillionaire.swf>$\""
   ${Else}
-    MessageBox MB_ICONINFORMATION|MB_OK "Installed! Launch Gazillionaire from Steam as usual — look for the blue 'Play Online' button in the top-left corner to host or join a networked game.$\r$\n$\r$\n$1"
+    MessageBox MB_ICONINFORMATION|MB_OK "Installed! Launch Gazillionaire from Steam as usual - look for the blue 'Play Online' button in the top-left corner to host or join a networked game.$\r$\n$\r$\n$1"
   ${EndIf}
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
