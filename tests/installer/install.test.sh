@@ -2,6 +2,16 @@
 # Self-check for tools/installer/install.sh using synthetic fixture files —
 # never touches a real Steam install or a real SWF.
 # Run directly: bash tests/installer/install.test.sh
+#
+# Known limitation: $FIXTURE_ROOT/tools/installer is not inside a real
+# `.app` bundle, so resign_app_bundle_if_macos's own directory walk never
+# finds a `*.app` ancestor and returns early (no-op) every time it's called
+# here. That means this suite cannot exercise the actual codesign
+# reproduction (writing loose assets into a *signed* bundle before vs.
+# after resign) — it only proves the install/restore call ORDER is correct
+# relative to the other pre-resign patches, not that codesign itself
+# behaves as expected on a real .app. This is an accepted gap in this
+# suite, not something to fix here.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
